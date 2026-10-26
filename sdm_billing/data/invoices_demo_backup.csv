@@ -1,0 +1,29 @@
+Invoice No,Date,Category,Customer,Grand Total,GST Amount,Type,Address,GSTIN,Base Total,GST Mode,Mobile
+SDM/VEH/2026/001,2026-09-30,Vehicle Sales,Sample Customer,80520.0,4020.0,,,,,,
+SDM/SER/2026/001,2026-09-30,Service,Sample Customer,590.0,90.0,,,,,,
+SDM/SP/2026/001,2026-10-01,Spare Parts,Sample Customer,53100.0,8100.0,Customer,"Chennai, Tamil Nadu",,45000.0,With GST (Tax Invoice),
+SDM/SP/2026/002,2026-10-01,Spare Parts,Sample Customer,53100.0,8100.0,Customer,"Harur, Dharmapuri",,45000.0,With GST (Tax Invoice),9876543210.0
+SDM/SP/2026/003,2026-10-01,Spare Parts,Sample Customer,53100.0,8100.0,Customer,"Harur, Dharmapuri",,45000.0,With GST (Tax Invoice),9876543210.0
+SDM/SP/2026/004,2026-10-01,Spare Parts,Sample Customer,53100.0,8100.0,Customer,"Harur, Dharmapuri",,45000.0,With GST (Tax Invoice),9876543210.0
+SDM/SP/2026/005,2026-10-01,Spare Parts,Sample Customer,53100.0,8100.0,Customer,"Harur, Dharmapuri",,45000.0,With GST (Tax Invoice),9876543210.0
+SDM/SP/2026/006,2026-10-01,Spare Parts,Sample Customer,53100.0,8100.0,Customer,"Harur, Dharmapuri",,45000.0,With GST (Tax Invoice),9876543210.0
+SDM/SP/2026/007,2026-10-01,Spare Parts,Sample Customer,53100.0,8100.0,Customer,"Harur, Dharmapuri",,45000.0,With GST (Tax Invoice),9876543210.0
+SDM/SP/2026/008,2026-10-01,Spare Parts,SONIYA,53100.0,8100.0,Customer,HARUR,,45000.0,With GST (Tax Invoice),9710948453.0
+SDM/SP/2026/009,2026-10-01,Spare Parts,SONIYA,53100.0,8100.0,Customer,HARUR,,45000.0,With GST (Tax Invoice),9710948453.0
+SDM/SP/2026/010,2026-10-01,Spare Parts,SONIYA,53100.0,8100.0,Customer,HARUR,,45000.0,With GST (Tax Invoice),9710948453.0
+SDM/SP/2026/011,2026-10-01,Spare Parts,SONIYA,53100.0,8100.0,Customer,HARUR,,45000.0,With GST (Tax Invoice),9710948453.0
+SDM/SP/2026/012,2026-10-01,Spare Parts,SONIYA,53100.0,8100.0,Customer,HARUR,,45000.0,With GST (Tax Invoice),9710948453.0
+SDM/SP/2026/013,2026-10-01,Spare Parts,SONIYA,53100.0,8100.0,Customer,HARUR,,45000.0,With GST (Tax Invoice),9710948453.0
+SDM/SP/2026/014,2026-10-01,Spare Parts,SONIYA,53100.0,8100.0,Customer,HARUR,,45000.0,With GST (Tax Invoice),9710948453.0
+SDM/SP/2026/015,2026-10-01,Spare Parts,SONIYA,53100.0,8100.0,Customer,HARUR,,45000.0,With GST (Tax Invoice),9710948453.0
+SDM/SP/2026/016,2026-10-01,Spare Parts,SONIYA,53100.0,8100.0,Customer,HARUR,,45000.0,With GST (Tax Invoice),9710948453.0
+SDM/SP/2026/017,2026-10-01,Spare Parts,SONIYA,53100.0,8100.0,Customer,HARUR,,45000.0,With GST (Tax Invoice),9710948453.0
+SDM/SP/2026/018,2026-10-01,Spare Parts,SONIYA,53100.0,8100.0,Customer,HARUR,,45000.0,With GST (Tax Invoice),9710948453.0
+SDM/SP/2026/019,2026-10-01,Spare Parts,SONIYA,53100.0,8100.0,Customer,HARUR,,45000.0,With GST (Tax Invoice),9710948453.0
+SDM/SP/2026/020,2026-10-01,Spare Parts,SONIYA,53100.0,8100.0,Customer,HARUR,,45000.0,With GST (Tax Invoice),9710948453.0
+SDM/SP/2026/021,2026-10-01,Spare Parts,SONIYA,53100.0,8100.0,Customer,HARUR,,45000.0,With GST (Tax Invoice),9710948453.0
+SDM/SP/2026/022,2026-10-01,Spare Parts,SONIYA,53100.0,8100.0,Customer,HARUR,,45000.0,With GST (Tax Invoice),9710948453.0
+SDM/SP/2026/023,2026-10-01,Spare Parts,SONIYA,53100.0,8100.0,Customer,HARUR,,45000.0,With GST (Tax Invoice),9710948453.0
+SDM/SP/2026/024,2026-10-01,Spare Parts,,31860.0,4860.0,Customer,,,27000.0,With GST (Tax Invoice),
+SDM/SP/2026/025,2026-10-01,Spare Parts,,31860.0,4860.0,Customer,,,27000.0,With GST (Tax Invoice),
+SDM/SP/2026/026,2026-10-01,Spare Parts,SONIYA,31860.0,4860.0,Customer,HARUR,,27000.0,With GST (Tax Invoice),

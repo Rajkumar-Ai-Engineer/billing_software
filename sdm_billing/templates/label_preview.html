@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Label Preview - {{ width_mm }}x{{ height_mm }}mm</title>
+    <style>
+        @page {
+            size: {{ width_mm }}mm {{ height_mm }}mm;
+            margin: 0;
+        }
+        * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            background: #e2e8f0;
+            color: #000;
+        }
+        .instruction-banner {
+            background: #fffbeB;
+            border-bottom: 2px solid #f59e0b;
+            padding: 12px 20px;
+            font-size: 13px;
+            color: #92400e;
+            max-width: 700px;
+            margin: 15px auto;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .instruction-banner h4 {
+            margin: 0 0 6px 0;
+            color: #b45309;
+        }
+        .instruction-banner ol {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .instruction-banner li {
+            margin-bottom: 4px;
+        }
+        .preview-controls {
+            max-width: 700px;
+            margin: 10px auto;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        .btn-ctrl {
+            background: #2E7D32;
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .label-stage {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px 0;
+        }
+        .thermal-label {
+            width: {{ width_mm }}mm;
+            height: {{ height_mm }}mm;
+            background: #fff;
+            padding: 2mm 3mm;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            border: 1px dashed #94a3b8;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        .shop-name-label {
+            font-size: 8pt;
+            font-weight: bold;
+            color: #000;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .battery-serial-text {
+            font-size: 11pt;
+            font-weight: 900;
+            margin: 1px 0;
+        }
+        .battery-spec-text {
+            font-size: 8pt;
+            font-weight: bold;
+            color: #222;
+        }
+        .product-name-text {
+            font-size: 7.5pt;
+            font-weight: bold;
+            line-height: 1.1;
+            margin: 1px 0 2px 0;
+            max-height: 2.2em;
+            overflow: hidden;
+        }
+        .product-price-text {
+            font-size: 8pt;
+            font-weight: 900;
+            margin-top: 1px;
+        }
+        .codes-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+        }
+        .barcode-img {
+            max-width: 65%;
+            height: 12mm;
+            object-fit: contain;
+        }
+        .qr-img {
+            width: 11mm;
+            height: 11mm;
+            object-fit: contain;
+        }
+        @media print {
+            body {
+                background: none !important;
+            }
+            .instruction-banner, .preview-controls {
+                display: none !important;
+            }
+            .label-stage {
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            .thermal-label {
+                border: none !important;
+                box-shadow: none !important;
+                margin: 0 !important;
+                page-break-after: always;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="instruction-banner">
+        <h4>📌 TVS-E LP 46 Print Dialog Instructions:</h4>
+        <ol>
+            <li>Select <strong>TVS LP 46</strong> in the Destination printer dropdown.</li>
+            <li>Set <strong>Paper Size</strong> to <strong>{{ width_mm }} × {{ height_mm }} mm</strong> (or user-defined label).</li>
+            <li>Set <strong>Margins</strong> to <strong>None</strong>.</li>
+        </ol>
+    </div>
+
+    <div class="preview-controls">
+        <button class="btn-ctrl" onclick="window.print()">🖨️ Print Label Now</button>
+        <button class="btn-ctrl" style="background: #64748b;" onclick="window.close()">Close</button>
+    </div>
+
+    <div class="label-stage">
+        {% for c in range(copies) %}
+        <div class="thermal-label">
+            {% if type == 'battery' %}
+                <div>
+                    <div class="shop-name-label">{{ shop_name }}</div>
+                    <div class="battery-serial-text">{{ serial }}</div>
+                    <div class="battery-spec-text">{{ battery_type }} {{ voltage }}V {{ ah }}Ah</div>
+                </div>
+                <div class="codes-row">
+                    {% if barcode_b64 %}
+                    <img src="data:image/png;base64,{{ barcode_b64 }}" class="barcode-img" alt="Barcode">
+                    {% endif %}
+                    {% if qr_b64 %}
+                    <img src="data:image/png;base64,{{ qr_b64 }}" class="qr-img" alt="QR">
+                    {% endif %}
+                </div>
+            {% elif type == 'invoice' %}
+                <div>
+                    <div class="shop-name-label">{{ shop_name }}</div>
+                    <div class="battery-serial-text">{{ invoice_no }}</div>
+                </div>
+                <div class="codes-row">
+                    {% if barcode_b64 %}
+                    <img src="data:image/png;base64,{{ barcode_b64 }}" class="barcode-img" alt="Barcode" style="max-width: 80%;">
+                    {% endif %}
+                    {% if qr_b64 %}
+                    <img src="data:image/png;base64,{{ qr_b64 }}" class="qr-img" alt="QR">
+                    {% endif %}
+                </div>
+            {% else %}
+                <!-- Product Label -->
+                <div>
+                    <div class="shop-name-label">{{ shop_name }}</div>
+                    <div class="product-name-text">{{ name }}</div>
+                </div>
+                <div>
+                    {% if barcode_b64 %}
+                    <img src="data:image/png;base64,{{ barcode_b64 }}" class="barcode-img" alt="Barcode" style="max-width: 95%; height: 13mm; display: block;">
+                    {% endif %}
+                    {% if show_price and price %}
+                    <div class="product-price-text">MRP: {{ format_inr(price) }}</div>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+
+    <script>
+        // Open print dialog automatically (only if opened as top-level window)
+        window.addEventListener("DOMContentLoaded", function() {
+            if (window.self === window.top) {
+                setTimeout(function() {
+                    window.print();
+                }, 300);
+            }
+        });
+    </script>
+</body>
+</html>

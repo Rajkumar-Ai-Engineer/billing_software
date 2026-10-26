@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-container">
+    <div class="page-header-row">
+        <div>
+            <h2>📥 Inward Purchases & Bulk GST Bills</h2>
+            <div class="page-subtitle">Track supplier bills and bulk stock received for Sri Dhanam Motors</div>
+        </div>
+        <div class="btn-group-row">
+            <a href="/api/purchases/export" class="btn btn-secondary">📥 Export All (CSV)</a>
+        </div>
+    </div>
+
+    <!-- Summary Metrics Grid -->
+    <div class="metrics-grid">
+        <div class="metric-card metric-primary">
+            <div class="metric-icon">📦</div>
+            <div class="metric-body">
+                <span class="metric-title">Total Inward Spend</span>
+                <span class="metric-value">₹ {{ "%.2f"|format(total_amount) }}</span>
+                <span class="metric-sub">{{ total_bills }} purchase bills recorded</span>
+            </div>
+        </div>
+        <div class="metric-card metric-info">
+            <div class="metric-icon">🔢</div>
+            <div class="metric-body">
+                <span class="metric-title">Total Quantity Received</span>
+                <span class="metric-value">{{ total_qty }} Units</span>
+                <span class="metric-sub">Cumulative stock received</span>
+            </div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-icon">📅</div>
+            <div class="metric-body">
+                <span class="metric-title">This Month's Inward</span>
+                <span class="metric-value">₹ {{ "%.2f"|format(month_amount) }}</span>
+                <span class="metric-sub">{{ month_qty }} units this month</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Inward Purchase Form Card -->
+    <div class="card" style="margin-bottom: 24px;">
+        <div class="card-header" style="background: #f8fafc; border-bottom: 1px solid #e2e8f0; padding: 14px 20px;">
+            <h3 style="margin: 0; color: #1A365D; font-size: 17px;">➕ Record Inward Purchase Bill</h3>
+        </div>
+        <div style="padding: 20px;">
+            <form id="add-purchase-form" onsubmit="submitPurchase(event)">
+                <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                    <div class="form-group">
+                        <label for="pur-invoice-no" style="font-weight: 600; margin-bottom: 6px; display: block;">Invoice / Bill Number *</label>
+                        <input type="text" id="pur-invoice-no" name="invoice_no" class="input-ctrl" placeholder="e.g. GST/2026/089" required>
+                        <small style="color: #64748b; font-size: 11px;">Supplier invoice or bill number</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="pur-date" style="font-weight: 600; margin-bottom: 6px; display: block;">Date Received *</label>
+                        <input type="date" id="pur-date" name="received_date" class="input-ctrl" value="{{ today_date }}" required>
+                        <small style="color: #64748b; font-size: 11px;">Date stock was received</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="pur-price" style="font-weight: 600; margin-bottom: 6px; display: block;">Price / Bill Amount (₹) *</label>
+                        <input type="number" id="pur-price" name="price" step="0.5" min="0" class="input-ctrl" placeholder="0.00" value="0.0" required>
+                        <small style="color: #64748b; font-size: 11px;">Total amount on the bill</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="pur-qty" style="font-weight: 600; margin-bottom: 6px; display: block;">Total Number of Quantity *</label>
+                        <input type="number" id="pur-qty" name="total_qty" min="0" step="1" class="input-ctrl" placeholder="0" value="1" required>
+                        <small style="color: #64748b; font-size: 11px;">Total items count</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="pur-notes" style="font-weight: 600; margin-bottom: 6px; display: block;">Notes / Remarks <span style="font-size: 11px; font-weight: normal; color: #64748b;">(Optional)</span></label>
+                        <input type="text" id="pur-notes" name="notes" class="input-ctrl" placeholder="Supplier name / details">
+                    </div>
+                </div>
+
+                <div style="margin-top: 16px; display: flex; justify-content: flex-end;">
+                    <button type="submit" class="btn btn-primary" id="btn-save-purchase" style="padding: 10px 24px; font-size: 15px;">
+                        💾 Save Purchase Bill
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Purchases History Table Card -->
+    <div class="card">
+        <div class="card-header flex-between" style="padding: 14px 20px; border-bottom: 1px solid #e2e8f0;">
+            <h3 style="margin: 0; color: #1A365D; font-size: 17px;">📋 Inward Purchase Register</h3>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <input type="text" id="purchase-search" placeholder="🔍 Search bill no or remarks..." class="input-ctrl" style="width: 250px; padding: 6px 12px;" onkeyup="filterPurchases()">
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="data-table" id="purchases-table">
+                <thead>
+                    <tr>
+                        <th style="width: 60px;">#</th>
+                        <th style="width: 160px;">Invoice / Bill No</th>
+                        <th style="width: 130px;">Date Received</th>
+                        <th style="width: 140px; text-align: center;">Total Quantity</th>
+                        <th style="width: 160px; text-align: right;">Price / Amount (₹)</th>
+                        <th>Notes / Supplier</th>
+                        <th style="width: 80px; text-align: center;">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="purchases-tbody">
+                    {% if purchases %}
+                        {% for pur in purchases %}
+                        <tr id="pur-row-{{ pur.id }}">
+                            <td>{{ loop.index }}</td>
+                            <td><strong style="color: #1A365D;">{{ pur.invoice_no }}</strong></td>
+                            <td>{{ pur.received_date }}</td>
+                            <td style="text-align: center;"><span class="badge" style="background: #e0f2fe; color: #0369a1; font-weight: bold; padding: 4px 10px; border-radius: 12px;">{{ pur.total_qty }} pcs</span></td>
+                            <td style="text-align: right; color: #2E7D32; font-weight: bold; font-size: 15px;">₹ {{ "%.2f"|format(pur.price) }}</td>
+                            <td style="color: #64748b;">{{ pur.notes }}</td>
+                            <td style="text-align: center;">
+                                <button type="button" class="btn btn-danger" style="padding: 4px 10px; font-size: 12px;" onclick="deletePurchase({{ pur.id }})">🗑️</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr id="no-purchases-row">
+                            <td colspan="7" class="text-center" style="padding: 24px; color: #64748b;">No inward purchase bills recorded yet. Add one above!</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function submitPurchase(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btn-save-purchase');
+    btn.disabled = true;
+    btn.innerText = "Saving...";
+
+    const payload = {
+        invoice_no: document.getElementById('pur-invoice-no').value,
+        received_date: document.getElementById('pur-date').value,
+        price: parseFloat(document.getElementById('pur-price').value || 0),
+        total_qty: parseInt(document.getElementById('pur-qty').value || 0),
+        notes: document.getElementById('pur-notes').value
+    };
+
+    try {
+        const resp = await fetch('/api/purchases', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await resp.json();
+        if (!resp.ok) {
+            throw new Error(data.detail || "Failed to save purchase bill");
+        }
+
+        if (window.showToast) {
+            showToast("✅ Inward purchase bill saved!", "success");
+        } else {
+            alert("✅ Inward purchase bill saved!");
+        }
+
+        // Reset fields except date
+        document.getElementById('pur-invoice-no').value = '';
+        document.getElementById('pur-price').value = '0.0';
+        document.getElementById('pur-qty').value = '1';
+        document.getElementById('pur-notes').value = '';
+
+        setTimeout(() => window.location.reload(), 500);
+    } catch (err) {
+        if (window.showToast) {
+            showToast("❌ " + err.message, "error");
+        } else {
+            alert("❌ " + err.message);
+        }
+        btn.disabled = false;
+        btn.innerText = "💾 Save Purchase Bill";
+    }
+}
+
+async function deletePurchase(id) {
+    if (!confirm(`Are you sure you want to delete purchase record #${id}?`)) return;
+
+    try {
+        const resp = await fetch(`/api/purchases/${id}`, { method: 'DELETE' });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.detail || "Failed to delete");
+
+        if (window.showToast) showToast("🗑️ Purchase bill deleted", "success");
+        const row = document.getElementById(`pur-row-${id}`);
+        if (row) row.remove();
+        setTimeout(() => window.location.reload(), 600);
+    } catch (err) {
+        alert("Error: " + err.message);
+    }
+}
+
+function filterPurchases() {
+    const q = document.getElementById('purchase-search').value.toLowerCase();
+    const rows = document.querySelectorAll('#purchases-tbody tr');
+    rows.forEach(r => {
+        if (r.id === 'no-purchases-row') return;
+        const text = r.innerText.toLowerCase();
+        r.style.display = text.includes(q) ? '' : 'none';
+    });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,942 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-container">
+    <!-- Header Row -->
+    <div class="page-header-row">
+        <div>
+            <h2>👷 Worker Attendance & Month-End Salary</h2>
+            <p class="bill-subtitle">Daily Attendance Register (S.No | Name | A/P | Date & Day) & Automated Leave/Salary Calculation</p>
+        </div>
+        <div class="header-action-btns">
+            <button class="btn btn-primary" onclick="openNewWorkerModal()">➕ Add Worker</button>
+            <button class="btn btn-warning" onclick="openAdvanceModal()">💸 Record Advance</button>
+            <a href="/api/attendance/export?year={{ calc_year }}&month={{ calc_month }}" class="btn btn-outline-primary" id="btn-export-csv">📥 Export Salary (CSV)</a>
+        </div>
+    </div>
+
+    <!-- Shop Policy Alert Banner (Exact Rule from Specifications) -->
+    <div class="policy-alert-card mb-3">
+        <div class="policy-icon">📋</div>
+        <div class="policy-content">
+            <h4 style="margin: 0 0 4px 0; color: #1A365D;">Shop Attendance & Salary Calculation Policy</h4>
+            <div class="policy-rules-grid">
+                <div class="policy-rule-item">
+                    <span class="rule-badge rule-green">✓ 1 Paid Leave Allowed</span>
+                    <span>Every worker gets <strong>1 paid leave per month</strong>. If a worker is present 30 days (0 leave) or 29 days (1 leave), the <strong>salary remains full (same)</strong>.</span>
+                </div>
+                <div class="policy-rule-item">
+                    <span class="rule-badge rule-amber">⚠ 2+ Leaves Deductions</span>
+                    <span>When worker takes <strong>2 days leave</strong>, it reduces <strong>1 day salary</strong>. (Formula: <code>Deduction Days = Total Leaves - 1</code>).</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation Sub-Tabs -->
+    <div class="attendance-tabs-nav mb-3">
+        <button class="att-tab-btn active" id="tab-btn-daily" onclick="switchAttTab('daily')">📅 Daily Attendance Register</button>
+        <button class="att-tab-btn" id="tab-btn-salary" onclick="switchAttTab('salary')">💰 Month-End Salary ({{ calc_month_name }} {{ calc_year }})</button>
+        <button class="att-tab-btn" id="tab-btn-workers" onclick="switchAttTab('workers')">👥 Worker Directory ({{ workers|length }})</button>
+    </div>
+
+    <!-- ==================== TAB 1: DAILY ATTENDANCE ==================== -->
+    <div id="tab-panel-daily" class="att-tab-panel active">
+        <!-- Date Selector & Quick Mark Bar -->
+        <div class="card p-3 mb-3">
+            <div class="daily-control-bar">
+                <div class="date-picker-wrap">
+                    <label for="att-date-picker" style="font-weight: 700; color: #1A365D; margin-right: 8px;">Date:</label>
+                    <input type="date" id="att-date-picker" class="input-ctrl" value="{{ selected_date }}" onchange="onDateChanged(this.value)">
+                    <span class="day-badge" id="current-day-badge">📅 {{ selected_day_name }}</span>
+                </div>
+                <div class="quick-mark-wrap">
+                    <button type="button" class="btn btn-sm btn-outline-success" onclick="quickMarkAll('P')">🟢 Mark All Present (P)</button>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="quickMarkAll('A')">🔴 Mark All Absent (A)</button>
+                    <button type="button" class="btn btn-primary" onclick="saveCurrentAttendance()" id="btn-save-att">💾 Save Attendance</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Attendance Register Table (Matches Handwritten Form) -->
+        <div class="card">
+            <div class="card-header flex-between">
+                <div>
+                    <h3 style="font-size: 16px; color: #1A365D; margin: 0;">Daily Attendance Sheet &nbsp;|&nbsp; <span id="display-date-title">{{ selected_date }} ({{ selected_day_name }})</span></h3>
+                    <small style="color: #64748b;">Select <strong>P</strong> for Present, <strong>A</strong> for Absent, or <strong>HD</strong> for Half-Day</small>
+                </div>
+                <span class="badge-count" id="worker-count-badge">{{ daily_register|length }} Workers</span>
+            </div>
+
+            <div class="table-responsive">
+                <table class="data-table" id="daily-att-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 60px; text-align: center;">S.No</th>
+                            <th>Worker Name</th>
+                            <th>Role / Designation</th>
+                            <th style="width: 220px; text-align: center;">A / P (Attendance)</th>
+                            <th>Date and Day</th>
+                            <th>Remarks / Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody id="daily-att-tbody">
+                        {% for row in daily_register %}
+                        <tr data-worker-id="{{ row.worker_id }}" id="row-worker-{{ row.worker_id }}">
+                            <td style="text-align: center; font-weight: 700;">{{ row.s_no }}</td>
+                            <td>
+                                <strong>{{ row.worker_name }}</strong>
+                                <div style="font-size: 11px; color: #64748b;">📞 {{ row.phone }} | Base ₹{{ "%.0f"|format(row.monthly_salary) }}/mo</div>
+                            </td>
+                            <td><span class="badge-pill">{{ row.role }}</span></td>
+                            <td style="text-align: center;">
+                                <div class="ap-toggle-group">
+                                    <button type="button" class="ap-btn ap-present {% if row.status == 'P' %}active{% endif %}" onclick="setWorkerStatus({{ row.worker_id }}, 'P')">P (Present)</button>
+                                    <button type="button" class="ap-btn ap-absent {% if row.status == 'A' %}active{% endif %}" onclick="setWorkerStatus({{ row.worker_id }}, 'A')">A (Absent)</button>
+                                    <button type="button" class="ap-btn ap-half {% if row.status == 'HD' %}active{% endif %}" onclick="setWorkerStatus({{ row.worker_id }}, 'HD')">HD (Half)</button>
+                                </div>
+                            </td>
+                            <td class="cell-date-day">
+                                <strong>{{ row.date }}</strong><br>
+                                <span class="text-muted" style="font-size: 12px;">{{ row.day_name }}</span>
+                            </td>
+                            <td>
+                                <input type="text" class="input-ctrl input-notes" id="notes-{{ row.worker_id }}" value="{{ row.notes }}" placeholder="e.g. Leave, Sick, Permission">
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="p-3" style="display: flex; justify-content: flex-end; gap: 12px; background: #fafafa; border-top: 1px solid #e2e8f0;">
+                <button type="button" class="btn btn-secondary" onclick="resetToInitial()">🔄 Reset</button>
+                <button type="button" class="btn btn-primary" onclick="saveCurrentAttendance()" style="min-width: 180px;">💾 Save Attendance</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== TAB 2: MONTH-END SALARY ==================== -->
+    <div id="tab-panel-salary" class="att-tab-panel">
+        <!-- Month Selector Bar -->
+        <div class="card p-3 mb-3">
+            <div class="daily-control-bar">
+                <div class="date-picker-wrap" style="gap: 12px;">
+                    <label style="font-weight: 700; color: #1A365D;">Payroll Month:</label>
+                    <select id="salary-month-select" class="input-ctrl" style="width: 140px;" onchange="loadSalaryData()">
+                        {% for m_idx in range(1, 13) %}
+                        <option value="{{ m_idx }}" {% if m_idx == calc_month %}selected{% endif %}>
+                            {{ ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][m_idx - 1] }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <select id="salary-year-select" class="input-ctrl" style="width: 100px;" onchange="loadSalaryData()">
+                        {% for yr in [2025, 2026, 2027] %}
+                        <option value="{{ yr }}" {% if yr == calc_year %}selected{% endif %}>{{ yr }}</option>
+                        {% endfor %}
+                    </select>
+                    <label class="checkbox-inline" style="display: flex; align-items: center; gap: 6px; font-size: 13px; margin-left: 12px;">
+                        <input type="checkbox" id="calc-std-30" onchange="loadSalaryData()"> Standard 30-Day Divisor
+                    </label>
+                </div>
+                <div>
+                    <button class="btn btn-sm btn-outline-primary" onclick="exportSalaryCSV()">📥 Export Payroll (CSV)</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI Summary Cards -->
+        <div class="kpi-grid mb-3">
+            <div class="kpi-card">
+                <div class="kpi-label">Active Workers</div>
+                <div class="kpi-val" id="kpi-workers-count">{{ payroll_summary.workers_count }}</div>
+                <div class="kpi-sub">Total staff on payroll</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Gross Monthly Payroll</div>
+                <div class="kpi-val" id="kpi-gross-payroll">₹{{ "{:,.2f}".format(payroll_summary.total_gross_payroll) }}</div>
+                <div class="kpi-sub">Total base salaries</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Leave Deductions</div>
+                <div class="kpi-val text-danger" id="kpi-leave-deductions">₹{{ "{:,.2f}".format(payroll_summary.total_leave_deductions) }}</div>
+                <div class="kpi-sub">After 1 paid leave benefit</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Advances Deducted</div>
+                <div class="kpi-val text-warning" id="kpi-advances">₹{{ "{:,.2f}".format(payroll_summary.total_advances) }}</div>
+                <div class="kpi-sub">Mid-month advance payouts</div>
+            </div>
+            <div class="kpi-card" style="border-left: 4px solid #2E7D32;">
+                <div class="kpi-label">Net Payable Payroll</div>
+                <div class="kpi-val text-success" id="kpi-net-payroll">₹{{ "{:,.2f}".format(payroll_summary.total_net_payroll) }}</div>
+                <div class="kpi-sub">Final total payout for shop</div>
+            </div>
+        </div>
+
+        <!-- Salary Calculation Table -->
+        <div class="card">
+            <div class="card-header flex-between">
+                <div>
+                    <h3 style="font-size: 16px; color: #1A365D; margin: 0;">Month-End Salary Sheet &nbsp;|&nbsp; <span id="salary-sheet-month-label">{{ calc_month_name }} {{ calc_year }}</span></h3>
+                    <small style="color: #64748b;">Days in Month: <strong id="sheet-days-in-month">{{ payroll_summary.days_in_month }}</strong> | 1 Paid Leave Allowed Per Worker</small>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="data-table" id="salary-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px; text-align: center;">S.No</th>
+                            <th>Worker Name</th>
+                            <th>Base Salary (₹)</th>
+                            <th style="text-align: center;">Present (P)</th>
+                            <th style="text-align: center;">Leaves (A)</th>
+                            <th style="text-align: center;">Paid Leave</th>
+                            <th style="text-align: center;">Deductible</th>
+                            <th style="text-align: right;">Daily Rate</th>
+                            <th style="text-align: right;">Deduction</th>
+                            <th style="text-align: right;">Advance</th>
+                            <th style="text-align: right; color: #2E7D32;">Net Salary (₹)</th>
+                            <th style="width: 180px; text-align: center;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="salary-tbody">
+                        {% for row in payroll_summary.worker_salaries %}
+                        <tr>
+                            <td style="text-align: center; font-weight: 700;">{{ row.s_no }}</td>
+                            <td>
+                                <strong>{{ row.worker_name }}</strong>
+                                <div style="font-size: 11px; color: #64748b;">{{ row.role }}</div>
+                            </td>
+                            <td>₹{{ "{:,.2f}".format(row.monthly_salary) }}</td>
+                            <td style="text-align: center;"><span class="badge-present">{{ row.present_days }}</span></td>
+                            <td style="text-align: center;"><span class="badge-absent">{{ row.absent_days }}</span></td>
+                            <td style="text-align: center;"><span class="badge-paid-leave">{{ row.paid_leaves_used }} / 1</span></td>
+                            <td style="text-align: center;">
+                                {% if row.deductible_leave_days > 0 %}
+                                <span class="badge-deduct">{{ row.deductible_leave_days }} Days</span>
+                                {% else %}
+                                <span class="badge-zero">0 Days</span>
+                                {% endif %}
+                            </td>
+                            <td style="text-align: right;">₹{{ "%.2f"|format(row.daily_wage) }}</td>
+                            <td style="text-align: right; color: #e53e3e; font-weight: 600;">
+                                {% if row.deduction_amount > 0 %}
+                                -₹{{ "{:,.2f}".format(row.deduction_amount) }}
+                                {% else %}
+                                ₹0.00
+                                {% endif %}
+                            </td>
+                            <td style="text-align: right; color: #d97706;">
+                                {% if row.total_advances > 0 %}
+                                -₹{{ "{:,.2f}".format(row.total_advances) }}
+                                {% else %}
+                                ₹0.00
+                                {% endif %}
+                            </td>
+                            <td style="text-align: right; font-weight: 800; font-size: 15px; color: #2E7D32;">
+                                ₹{{ "{:,.2f}".format(row.net_payable_salary) }}
+                            </td>
+                            <td style="text-align: center;">
+                                <div class="action-btn-group" style="justify-content: center;">
+                                    <button class="btn btn-xs btn-outline-primary" title="Print Salary Voucher / Pay Slip" onclick="openPaySlip({{ row.worker_id }})">📄 Pay Slip</button>
+                                    <button class="btn btn-xs btn-outline-success" title="Send Pay Slip on WhatsApp" onclick="shareSalaryWhatsApp({{ row.worker_id }}, '{{ row.worker_name }}', '{{ row.phone }}', {{ row.monthly_salary }}, {{ row.present_days }}, {{ row.absent_days }}, {{ row.deduction_amount }}, {{ row.net_payable_salary }})">💬 WA</button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== TAB 3: MANAGE WORKERS ==================== -->
+    <div id="tab-panel-workers" class="att-tab-panel">
+        <div class="card mb-3">
+            <div class="card-header flex-between">
+                <div>
+                    <h3 style="font-size: 16px; color: #1A365D; margin: 0;">Shop Staff & Worker Directory</h3>
+                    <small style="color: #64748b;">Add, edit and manage shop technicians, mechanics and helpers</small>
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="openNewWorkerModal()">➕ Add New Worker</button>
+            </div>
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">ID</th>
+                            <th>Worker Name</th>
+                            <th>Mobile Number</th>
+                            <th>Designation / Role</th>
+                            <th>Base Monthly Salary</th>
+                            <th>Status</th>
+                            <th style="width: 160px; text-align: center;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="workers-tbody">
+                        {% for w in workers %}
+                        <tr id="worker-row-{{ w.id }}">
+                            <td><strong>{{ w.id }}</strong></td>
+                            <td><strong>{{ w.name }}</strong></td>
+                            <td>📞 {{ w.phone if w.phone else 'N/A' }}</td>
+                            <td><span class="badge-pill">{{ w.role }}</span></td>
+                            <td><strong>₹{{ "{:,.2f}".format(w.monthly_salary) }}</strong> / month</td>
+                            <td>
+                                {% if w.active %}
+                                <span class="badge-present">Active</span>
+                                {% else %}
+                                <span class="badge-absent">Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td style="text-align: center;">
+                                <div class="action-btn-group" style="justify-content: center;">
+                                    <button class="btn btn-xs btn-outline-primary" onclick="openEditWorkerModal({{ w.id }}, '{{ w.name }}', '{{ w.phone }}', '{{ w.role }}', {{ w.monthly_salary }})">✏️ Edit</button>
+                                    <button class="btn btn-xs btn-outline-danger" onclick="confirmDeleteWorker({{ w.id }}, '{{ w.name }}')">🗑️</button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== MODALS ==================== -->
+
+<!-- Modal: Add / Edit Worker -->
+<div id="worker-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 480px;">
+        <div class="modal-header">
+            <h3 id="worker-modal-title">➕ Add New Worker</h3>
+            <button class="modal-close-btn" onclick="closeWorkerModal()">&times;</button>
+        </div>
+        <form id="worker-form" onsubmit="handleSaveWorker(event)">
+            <input type="hidden" id="modal-worker-id" value="">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Worker Full Name <span class="req">*</span></label>
+                    <input type="text" id="modal-worker-name" class="input-ctrl" placeholder="e.g. A1, Ramesh, Suresh" required>
+                </div>
+                <div class="form-group">
+                    <label>Mobile Number (for WhatsApp Pay Slip)</label>
+                    <input type="tel" id="modal-worker-phone" class="input-ctrl" placeholder="10-digit mobile number" maxlength="10">
+                </div>
+                <div class="form-group">
+                    <label>Role / Designation</label>
+                    <select id="modal-worker-role" class="input-ctrl">
+                        <option value="Senior Mechanic">Senior Mechanic</option>
+                        <option value="EV Technician" selected>EV Technician</option>
+                        <option value="Battery Specialist">Battery Specialist</option>
+                        <option value="Service Assistant">Service Assistant</option>
+                        <option value="Helper">Helper</option>
+                        <option value="Sales Executive">Sales Executive</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Monthly Base Salary (₹) <span class="req">*</span></label>
+                    <input type="number" id="modal-worker-salary" class="input-ctrl" min="0" step="500" value="15000" required>
+                    <small class="field-hint">Used for 1-day paid leave & daily rate calculations</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeWorkerModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Worker</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Record Salary Advance -->
+<div id="advance-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 460px;">
+        <div class="modal-header">
+            <h3>💸 Record Salary Advance</h3>
+            <button class="modal-close-btn" onclick="closeAdvanceModal()">&times;</button>
+        </div>
+        <form id="advance-form" onsubmit="handleSaveAdvance(event)">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Select Worker <span class="req">*</span></label>
+                    <select id="advance-worker-select" class="input-ctrl" required>
+                        {% for w in workers %}
+                        <option value="{{ w.id }}">{{ w.name }} ({{ w.role }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Date of Advance <span class="req">*</span></label>
+                    <input type="date" id="advance-date" class="input-ctrl" value="{{ selected_date }}" required>
+                </div>
+                <div class="form-group">
+                    <label>Advance Amount (₹) <span class="req">*</span></label>
+                    <input type="number" id="advance-amount" class="input-ctrl" min="100" step="100" placeholder="e.g. 1000" required>
+                </div>
+                <div class="form-group">
+                    <label>Reason / Notes</label>
+                    <input type="text" id="advance-notes" class="input-ctrl" placeholder="e.g. Emergency, Medical, Festival">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeAdvanceModal()">Cancel</button>
+                <button type="submit" class="btn btn-warning">Record Advance</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Styles for Attendance Module -->
+<style>
+.policy-alert-card {
+    background: linear-gradient(135deg, #e0f2fe 0%, #f0fdf4 100%);
+    border: 1px solid #bae6fd;
+    border-radius: 8px;
+    padding: 14px 18px;
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+}
+.policy-icon {
+    font-size: 28px;
+    line-height: 1;
+}
+.policy-rules-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-top: 6px;
+}
+.policy-rule-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #1e293b;
+}
+.rule-badge {
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 11px;
+    white-space: nowrap;
+}
+.rule-green { background: #dcfce7; color: #166534; }
+.rule-amber { background: #fef3c7; color: #92400e; }
+
+.attendance-tabs-nav {
+    display: flex;
+    gap: 6px;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 2px;
+}
+.att-tab-btn {
+    padding: 9px 18px;
+    border: none;
+    background: transparent;
+    font-weight: 700;
+    color: #475569;
+    border-radius: 6px 6px 0 0;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+.att-tab-btn:hover {
+    color: #1A365D;
+    background: #e2e8f0;
+}
+.att-tab-btn.active {
+    color: #1A365D;
+    background: #ffffff;
+    border: 2px solid #cbd5e1;
+    border-bottom: 2px solid #ffffff;
+    margin-bottom: -2px;
+}
+.att-tab-panel {
+    display: none;
+}
+.att-tab-panel.active {
+    display: block;
+}
+
+.daily-control-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+.date-picker-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.day-badge {
+    background: #1A365D;
+    color: #ffffff;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 13px;
+}
+.quick-mark-wrap {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+/* A / P Toggle Buttons */
+.ap-toggle-group {
+    display: inline-flex;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid #cbd5e1;
+}
+.ap-btn {
+    padding: 6px 12px;
+    border: none;
+    background: #f1f5f9;
+    font-weight: 700;
+    font-size: 12px;
+    cursor: pointer;
+    color: #475569;
+    transition: all 0.15s ease;
+}
+.ap-btn:not(:last-child) {
+    border-right: 1px solid #cbd5e1;
+}
+.ap-btn.ap-present.active {
+    background: #2E7D32;
+    color: #ffffff;
+}
+.ap-btn.ap-absent.active {
+    background: #dc2626;
+    color: #ffffff;
+}
+.ap-btn.ap-half.active {
+    background: #d97706;
+    color: #ffffff;
+}
+
+.badge-present { background: #dcfce7; color: #166534; padding: 3px 8px; border-radius: 4px; font-weight: 700; }
+.badge-absent { background: #fee2e2; color: #991b1b; padding: 3px 8px; border-radius: 4px; font-weight: 700; }
+.badge-paid-leave { background: #e0f2fe; color: #075985; padding: 3px 8px; border-radius: 4px; font-weight: 700; }
+.badge-deduct { background: #fef2f2; color: #b91c1c; padding: 3px 8px; border-radius: 4px; font-weight: 700; }
+.badge-zero { background: #f1f5f9; color: #64748b; padding: 3px 8px; border-radius: 4px; }
+
+/* KPI Grid */
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 12px;
+}
+.kpi-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.kpi-label { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; }
+.kpi-val { font-size: 22px; font-weight: 800; color: #1A365D; margin: 4px 0; }
+.kpi-sub { font-size: 11px; color: #94a3b8; }
+.text-danger { color: #dc2626 !important; }
+.text-warning { color: #d97706 !important; }
+.text-success { color: #2E7D32 !important; }
+</style>
+
+<!-- JavaScript for Attendance Management -->
+<script>
+let currentAttendanceData = {};
+
+// Switch between sub-tabs
+function switchAttTab(tabId) {
+    document.querySelectorAll('.att-tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.att-tab-panel').forEach(p => p.classList.remove('active'));
+    
+    document.getElementById('tab-btn-' + tabId).classList.add('active');
+    document.getElementById('tab-panel-' + tabId).classList.add('active');
+
+    if (tabId === 'salary') {
+        loadSalaryData();
+    }
+}
+
+// Update day name badge on date picker change
+function onDateChanged(newDate) {
+    if (!newDate) return;
+    const d = new Date(newDate);
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const dayName = dayNames[d.getDay()];
+    
+    document.getElementById('current-day-badge').textContent = `📅 ${dayName}`;
+    document.getElementById('display-date-title').textContent = `${newDate} (${dayName})`;
+    
+    // Fetch records for selected date
+    fetch(`/api/attendance/daily?date_str=${newDate}`)
+        .then(res => res.json())
+        .then(data => {
+            renderDailyTable(data.records, newDate, data.day_name);
+        })
+        .catch(err => {
+            console.error('Error fetching attendance:', err);
+            showToast('Error loading date attendance', 'error');
+        });
+}
+
+function renderDailyTable(records, dateStr, dayName) {
+    const tbody = document.getElementById('daily-att-tbody');
+    tbody.innerHTML = '';
+    document.getElementById('worker-count-badge').textContent = `${records.length} Workers`;
+    
+    records.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.setAttribute('data-worker-id', r.worker_id);
+        tr.id = `row-worker-${r.worker_id}`;
+        
+        tr.innerHTML = `
+            <td style="text-align: center; font-weight: 700;">${r.s_no}</td>
+            <td>
+                <strong>${r.worker_name}</strong>
+                <div style="font-size: 11px; color: #64748b;">📞 ${r.phone} | Base ₹${Math.round(r.monthly_salary)}/mo</div>
+            </td>
+            <td><span class="badge-pill">${r.role}</span></td>
+            <td style="text-align: center;">
+                <div class="ap-toggle-group">
+                    <button type="button" class="ap-btn ap-present ${r.status === 'P' ? 'active' : ''}" onclick="setWorkerStatus(${r.worker_id}, 'P')">P (Present)</button>
+                    <button type="button" class="ap-btn ap-absent ${r.status === 'A' ? 'active' : ''}" onclick="setWorkerStatus(${r.worker_id}, 'A')">A (Absent)</button>
+                    <button type="button" class="ap-btn ap-half ${r.status === 'HD' ? 'active' : ''}" onclick="setWorkerStatus(${r.worker_id}, 'HD')">HD (Half)</button>
+                </div>
+            </td>
+            <td class="cell-date-day">
+                <strong>${dateStr}</strong><br>
+                <span class="text-muted" style="font-size: 12px;">${dayName}</span>
+            </td>
+            <td>
+                <input type="text" class="input-ctrl input-notes" id="notes-${r.worker_id}" value="${r.notes || ''}" placeholder="e.g. Leave, Sick, Permission">
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// Toggle Worker Status
+function setWorkerStatus(workerId, status) {
+    const row = document.getElementById(`row-worker-${workerId}`);
+    if (!row) return;
+    
+    const btns = row.querySelectorAll('.ap-btn');
+    btns.forEach(b => b.classList.remove('active'));
+    
+    if (status === 'P') row.querySelector('.ap-present').classList.add('active');
+    else if (status === 'A') row.querySelector('.ap-absent').classList.add('active');
+    else if (status === 'HD') row.querySelector('.ap-half').classList.add('active');
+}
+
+// Quick Mark All
+function quickMarkAll(status) {
+    const rows = document.querySelectorAll('#daily-att-tbody tr');
+    rows.forEach(r => {
+        const wId = r.getAttribute('data-worker-id');
+        setWorkerStatus(wId, status);
+    });
+    showToast(`Marked all as ${status === 'P' ? 'Present' : 'Absent'}`, 'info');
+}
+
+// Save Attendance via AJAX
+function saveCurrentAttendance() {
+    const dateStr = document.getElementById('att-date-picker').value;
+    if (!dateStr) {
+        showToast('Please pick a date', 'error');
+        return;
+    }
+    
+    const rows = document.querySelectorAll('#daily-att-tbody tr');
+    const records = [];
+    
+    rows.forEach(r => {
+        const workerId = parseInt(r.getAttribute('data-worker-id'));
+        let status = 'P';
+        if (r.querySelector('.ap-absent.active')) status = 'A';
+        else if (r.querySelector('.ap-half.active')) status = 'HD';
+        
+        const notesInput = document.getElementById(`notes-${workerId}`);
+        const notes = notesInput ? notesInput.value.trim() : '';
+        
+        records.push({ worker_id: workerId, status: status, notes: notes });
+    });
+    
+    const btn = document.getElementById('btn-save-att');
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+    
+    fetch('/api/attendance/daily', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date: dateStr, records: records })
+    })
+    .then(res => res.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.textContent = '💾 Save Attendance';
+        if (data.success) {
+            showToast(data.message, 'success');
+        } else {
+            showToast('Failed to save attendance', 'error');
+        }
+    })
+    .catch(err => {
+        btn.disabled = false;
+        btn.textContent = '💾 Save Attendance';
+        console.error(err);
+        showToast('Server error while saving attendance', 'error');
+    });
+}
+
+// Load Salary Payroll Data
+function loadSalaryData() {
+    const month = document.getElementById('salary-month-select').value;
+    const year = document.getElementById('salary-year-select').value;
+    const std30 = document.getElementById('calc-std-30').checked;
+    
+    fetch(`/api/attendance/payroll?year=${year}&month=${month}&standard_30=${std30}`)
+        .then(res => res.json())
+        .then(data => {
+            renderPayroll(data);
+        })
+        .catch(err => {
+            console.error('Error fetching payroll:', err);
+            showToast('Error loading salary calculations', 'error');
+        });
+}
+
+function renderPayroll(payroll) {
+    document.getElementById('kpi-workers-count').textContent = payroll.workers_count;
+    document.getElementById('kpi-gross-payroll').textContent = `₹${payroll.total_gross_payroll.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    document.getElementById('kpi-leave-deductions').textContent = `₹${payroll.total_leave_deductions.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    document.getElementById('kpi-advances').textContent = `₹${payroll.total_advances.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    document.getElementById('kpi-net-payroll').textContent = `₹${payroll.total_net_payroll.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    
+    document.getElementById('salary-sheet-month-label').textContent = `${payroll.month_name} ${payroll.year}`;
+    document.getElementById('sheet-days-in-month').textContent = payroll.days_in_month;
+    
+    // Update CSV export link
+    const exportBtn = document.getElementById('btn-export-csv');
+    if (exportBtn) {
+        exportBtn.href = `/api/attendance/export?year=${payroll.year}&month=${payroll.month}&standard_30=${document.getElementById('calc-std-30').checked}`;
+    }
+
+    const tbody = document.getElementById('salary-tbody');
+    tbody.innerHTML = '';
+    
+    payroll.worker_salaries.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td style="text-align: center; font-weight: 700;">${row.s_no}</td>
+            <td>
+                <strong>${row.worker_name}</strong>
+                <div style="font-size: 11px; color: #64748b;">${row.role}</div>
+            </td>
+            <td>₹${row.monthly_salary.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+            <td style="text-align: center;"><span class="badge-present">${row.present_days}</span></td>
+            <td style="text-align: center;"><span class="badge-absent">${row.absent_days}</span></td>
+            <td style="text-align: center;"><span class="badge-paid-leave">${row.paid_leaves_used} / 1</span></td>
+            <td style="text-align: center;">
+                ${row.deductible_leave_days > 0 
+                    ? `<span class="badge-deduct">${row.deductible_leave_days} Days</span>` 
+                    : `<span class="badge-zero">0 Days</span>`}
+            </td>
+            <td style="text-align: right;">₹${row.daily_wage.toFixed(2)}</td>
+            <td style="text-align: right; color: #e53e3e; font-weight: 600;">
+                ${row.deduction_amount > 0 ? `-₹${row.deduction_amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}` : '₹0.00'}
+            </td>
+            <td style="text-align: right; color: #d97706;">
+                ${row.total_advances > 0 ? `-₹${row.total_advances.toLocaleString('en-IN', {minimumFractionDigits: 2})}` : '₹0.00'}
+            </td>
+            <td style="text-align: right; font-weight: 800; font-size: 15px; color: #2E7D32;">
+                ₹${row.net_payable_salary.toLocaleString('en-IN', {minimumFractionDigits: 2})}
+            </td>
+            <td style="text-align: center;">
+                <div class="action-btn-group" style="justify-content: center;">
+                    <button class="btn btn-xs btn-outline-primary" title="Print Salary Slip" onclick="openPaySlip(${row.worker_id})">📄 Pay Slip</button>
+                    <button class="btn btn-xs btn-outline-success" title="WhatsApp Pay Slip" onclick="shareSalaryWhatsApp(${row.worker_id}, '${row.worker_name.replace(/'/g, "\\'")}', '${row.phone}', ${row.monthly_salary}, ${row.present_days}, ${row.absent_days}, ${row.deduction_amount}, ${row.net_payable_salary})">💬 WA</button>
+                </div>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function exportSalaryCSV() {
+    const month = document.getElementById('salary-month-select').value;
+    const year = document.getElementById('salary-year-select').value;
+    const std30 = document.getElementById('calc-std-30').checked;
+    window.location.href = `/api/attendance/export?year=${year}&month=${month}&standard_30=${std30}`;
+}
+
+// Open Printable Pay Slip
+function openPaySlip(workerId) {
+    const month = document.getElementById('salary-month-select') ? document.getElementById('salary-month-select').value : '{{ calc_month }}';
+    const year = document.getElementById('salary-year-select') ? document.getElementById('salary-year-select').value : '{{ calc_year }}';
+    window.open(`/attendance/pay-slip/${workerId}?year=${year}&month=${month}`, '_blank', 'width=800,height=900');
+}
+
+// WhatsApp Pay Slip Share
+function shareSalaryWhatsApp(workerId, name, phone, baseSalary, present, absent, deduction, netSalary) {
+    const month = document.getElementById('salary-month-select') ? document.getElementById('salary-month-select').options[document.getElementById('salary-month-select').selectedIndex].text : '{{ calc_month_name }}';
+    const year = document.getElementById('salary-year-select') ? document.getElementById('salary-year-select').value : '{{ calc_year }}';
+
+    let cleanPhone = (phone || '').replace(/\D/g, '');
+    if (cleanPhone.length === 10) cleanPhone = '91' + cleanPhone;
+
+    const message = `*SRI DHANAM MOTORS - SALARY SLIP*\n` +
+        `------------------------------------\n` +
+        `👤 Worker: ${name}\n` +
+        `📅 Month: ${month} ${year}\n` +
+        `💼 Base Salary: ₹${baseSalary.toLocaleString('en-IN')}\n` +
+        `🟢 Present Days: ${present}\n` +
+        `🔴 Leave Days: ${absent}\n` +
+        `✨ Paid Leave Applied: 1 Day\n` +
+        `📉 Leave Deductions: ₹${deduction.toLocaleString('en-IN')}\n` +
+        `------------------------------------\n` +
+        `💰 *NET PAYABLE SALARY: ₹${netSalary.toLocaleString('en-IN')}*\n` +
+        `------------------------------------\n` +
+        `Thank you for your dedicated service at Sri Dhanam Motors!`;
+
+    const encoded = encodeURIComponent(message);
+    const url = cleanPhone ? `https://wa.me/${cleanPhone}?text=${encoded}` : `https://wa.me/?text=${encoded}`;
+    window.open(url, '_blank');
+}
+
+// Worker Management Modals
+function openNewWorkerModal() {
+    document.getElementById('worker-modal-title').textContent = '➕ Add New Worker';
+    document.getElementById('modal-worker-id').value = '';
+    document.getElementById('modal-worker-name').value = '';
+    document.getElementById('modal-worker-phone').value = '';
+    document.getElementById('modal-worker-salary').value = '15000';
+    document.getElementById('worker-modal').style.display = 'flex';
+}
+
+function openEditWorkerModal(id, name, phone, role, salary) {
+    document.getElementById('worker-modal-title').textContent = '✏️ Edit Worker Details';
+    document.getElementById('modal-worker-id').value = id;
+    document.getElementById('modal-worker-name').value = name;
+    document.getElementById('modal-worker-phone').value = phone || '';
+    document.getElementById('modal-worker-role').value = role;
+    document.getElementById('modal-worker-salary').value = salary;
+    document.getElementById('worker-modal').style.display = 'flex';
+}
+
+function closeWorkerModal() {
+    document.getElementById('worker-modal').style.display = 'none';
+}
+
+function handleSaveWorker(e) {
+    e.preventDefault();
+    const id = document.getElementById('modal-worker-id').value;
+    const payload = {
+        name: document.getElementById('modal-worker-name').value.trim(),
+        phone: document.getElementById('modal-worker-phone').value.trim(),
+        role: document.getElementById('modal-worker-role').value,
+        monthly_salary: parseFloat(document.getElementById('modal-worker-salary').value) || 0,
+        active: true
+    };
+
+    const isEdit = !!id;
+    const url = isEdit ? `/api/attendance/workers/${id}` : '/api/attendance/workers';
+    const method = isEdit ? 'PUT' : 'POST';
+
+    fetch(url, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            closeWorkerModal();
+            showToast(isEdit ? 'Worker updated successfully!' : 'Worker added successfully!', 'success');
+            setTimeout(() => window.location.reload(), 800);
+        } else {
+            showToast('Failed to save worker', 'error');
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        showToast('Server error while saving worker', 'error');
+    });
+}
+
+function confirmDeleteWorker(id, name) {
+    if (confirm(`Are you sure you want to deactivate worker '${name}'?`)) {
+        fetch(`/api/attendance/workers/${id}`, { method: 'DELETE' })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    showToast(data.message, 'success');
+                    const row = document.getElementById(`worker-row-${id}`);
+                    if (row) row.remove();
+                }
+            })
+            .catch(err => console.error(err));
+    }
+}
+
+// Advance Modal
+function openAdvanceModal() {
+    document.getElementById('advance-modal').style.display = 'flex';
+}
+
+function closeAdvanceModal() {
+    document.getElementById('advance-modal').style.display = 'none';
+}
+
+function handleSaveAdvance(e) {
+    e.preventDefault();
+    const payload = {
+        worker_id: parseInt(document.getElementById('advance-worker-select').value),
+        date: document.getElementById('advance-date').value,
+        amount: parseFloat(document.getElementById('advance-amount').value) || 0,
+        notes: document.getElementById('advance-notes').value.trim()
+    };
+
+    fetch('/api/attendance/advance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            closeAdvanceModal();
+            showToast(`₹${payload.amount} advance recorded!`, 'success');
+            loadSalaryData();
+        } else {
+            showToast('Failed to record advance', 'error');
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        showToast('Server error recording advance', 'error');
+    });
+}
+
+// Toast helper
+function showToast(msg, type='info') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    const t = document.createElement('div');
+    t.className = `toast toast-${type}`;
+    t.textContent = msg;
+    container.appendChild(t);
+    setTimeout(() => t.remove(), 3500);
+}
+
+function resetToInitial() {
+    window.location.reload();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-container billing-page">
+    <div class="bill-header-row">
+        <div>
+            <h2>🛵 Vehicle Bill</h2>
+            <p class="bill-subtitle">AUTHORIZED JHEV MOTORS DEALER | Next Bill: <span id="bill-inv-no-display" class="highlight-inv">{{ default_invoice_no }}</span></p>
+        </div>
+        <div class="bill-meta-controls">
+            <span class="badge-date">📅 {{ today_date }}</span>
+        </div>
+    </div>
+
+    <!-- Customer & Billing Information Card -->
+    <div class="card bill-form-card">
+        <input type="hidden" id="gst-mode" value="With GST (Tax Invoice)">
+        <input type="hidden" name="buyer_type" value="Customer">
+
+        <div class="form-grid-3">
+            <div class="form-group">
+                <label for="cust-name">Customer Name <span class="req">*</span></label>
+                <input type="text" id="cust-name" class="input-ctrl" placeholder="Enter Full Name" required>
+            </div>
+
+            <div class="form-group">
+                <label for="cust-mobile">Customer Mobile No <span class="req">*</span></label>
+                <input type="tel" id="cust-mobile" class="input-ctrl" placeholder="10-digit Mobile Number" maxlength="10" required>
+                <small class="field-hint">Must be 10 digits</small>
+            </div>
+
+            <div class="form-group">
+                <label for="vehicle-profit-margin">Profit Margin (%) <span class="req">*</span></label>
+                <div style="position: relative;">
+                    <input type="number" id="vehicle-profit-margin" class="input-ctrl" placeholder="e.g. 15" min="0" max="1000" step="0.5" style="font-weight: 700; font-size: 1.05rem; padding-right: 32px;" oninput="onVehicleProfitMarginChanged(this.value)">
+                    <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #64748b; font-weight: bold; pointer-events: none;">%</span>
+                </div>
+                <small class="field-hint">Enter profit % margin needed (Cost + %)</small>
+            </div>
+
+            <div class="form-group">
+                <label for="cust-address">Address</label>
+                <input type="text" id="cust-address" class="input-ctrl" placeholder="City / Street / Pincode">
+            </div>
+
+            <div class="form-group">
+                <label for="cust-gstin">GSTIN (Optional)</label>
+                <input type="text" id="cust-gstin" class="input-ctrl" placeholder="15-digit GSTIN" maxlength="15" style="text-transform: uppercase;">
+            </div>
+        </div>
+    </div>
+
+    <!-- Vehicle Selection with Tick Cases (Checkboxes) -->
+    <div class="card catalog-card">
+        <div class="card-header flex-between">
+            <div>
+                <h3>☑️ Select Vehicles to Add in Bill</h3>
+                <p class="bill-subtitle" style="font-size: 12px; margin-top: 2px;">Tick the box to add vehicle directly to bill. Untick to remove.</p>
+            </div>
+            <div class="catalog-tab-group">
+                <button type="button" class="filter-tab-btn active" id="tab-filter-all" onclick="setProductFilter('all')">
+                    All Vehicles (<span id="all-products-count">0</span>)
+                </button>
+                <button type="button" class="filter-tab-btn" id="tab-filter-ticked" onclick="setProductFilter('ticked')">
+                    ☑ Ticked in Bill (<span id="ticked-products-count">0</span>)
+                </button>
+            </div>
+        </div>
+
+        <!-- Category Filter Pills Bar -->
+        <div class="catalog-category-pills-bar">
+            <span class="category-pills-label">Category Filter:</span>
+            <button type="button" class="filter-pill active" data-cat="All" onclick="setBillingCategoryFilter('All', this)">All Items (<span id="count-cat-all">0</span>)</button>
+            <button type="button" class="filter-pill" data-cat="Vehicle Sales" onclick="setBillingCategoryFilter('Vehicle Sales', this)">🛵 Vehicle Sales (<span id="count-cat-vehicle">0</span>)</button>
+            <button type="button" class="filter-pill" data-cat="Spare Parts" onclick="setBillingCategoryFilter('Spare Parts', this)">🔩 Spare Parts (<span id="count-cat-spare">0</span>)</button>
+        </div>
+
+        <div class="catalog-toolbar">
+            <div class="search-box-wrapper">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="catalog-search" class="input-ctrl search-input" placeholder="Quick search vehicle or spare part name..." oninput="onSearchInput(this.value)">
+                <button type="button" class="search-clear-btn" id="search-clear" onclick="clearCatalogSearch()" title="Clear search" style="display: none;">✕</button>
+            </div>
+            <div class="selection-status-badge">
+                <span id="selected-items-badge-text">0 items ticked</span>
+            </div>
+        </div>
+
+        <div class="table-responsive catalog-table-scroll">
+            <table class="data-table catalog-table" id="catalog-table">
+                <thead>
+                    <tr>
+                        <th style="width: 75px; text-align: center;">Tick (☑)</th>
+                        <th>Product / Vehicle Name</th>
+                        <th style="width: 120px; text-align: center;">Stock</th>
+                        <th style="width: 140px; text-align: right;">Unit Price (₹)</th>
+                        <th style="width: 145px; text-align: center;">Qty</th>
+                        <th style="width: 140px; text-align: right;">Line Total (₹)</th>
+                    </tr>
+                </thead>
+                <tbody id="catalog-tbody">
+                    <tr><td colspan="6" class="text-center text-muted">Loading vehicles catalog...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Vehicles in Current Bill Table -->
+    <div class="card cart-card" id="current-bill-card">
+        <div class="card-header flex-between">
+            <h3>📋 Vehicles in Bill (<span id="cart-item-count">0</span>)</h3>
+            <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearCart()">Untick All</button>
+        </div>
+        <div class="table-responsive">
+            <table class="data-table cart-table" id="cart-table">
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">S.No</th>
+                        <th>Vehicle Name</th>
+                        <th>Price (₹)</th>
+                        <th>Qty</th>
+                        <th>Subtotal (₹)</th>
+                        <th>GST %</th>
+                        <th>GST Amt (₹)</th>
+                        <th>Total (₹)</th>
+                        <th style="width: 80px; text-align: center;">Untick</th>
+                    </tr>
+                </thead>
+                <tbody id="cart-tbody">
+                    <tr class="empty-row"><td colspan="9" class="text-center text-muted">No vehicles ticked yet. Tick vehicles above to add to bill.</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Totals & Actions Footer -->
+        <div class="cart-footer-grid">
+            <div class="action-buttons-group">
+                <button type="button" class="btn btn-secondary" onclick="resetForm()">🔄 Reset</button>
+                <button type="button" class="btn btn-success" onclick="saveAndPrint()">🖨️ Save and Print</button>
+                <button type="button" class="btn btn-outline-primary" onclick="printEstimate()">📄 Print Estimate</button>
+                <button type="button" class="btn btn-whatsapp" onclick="saveAndShareWhatsApp()">💬 Save & Share WhatsApp</button>
+            </div>
+            <div class="totals-summary-box">
+                <div class="summary-line">
+                    <span>Subtotal:</span>
+                    <strong id="tot-subtotal">₹ 0.00</strong>
+                </div>
+                <div class="summary-line">
+                    <span>GST Amount:</span>
+                    <strong id="tot-gst">₹ 0.00</strong>
+                </div>
+                <div class="summary-line grand-total-line">
+                    <span>Grand Total:</span>
+                    <strong id="tot-grand">₹ 0.00</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    window.BILL_CATEGORY = "Vehicle Sales";
+    window.IS_VEHICLE_PAGE = true;
+</script>
+<script src="/static/js/billing.js"></script>
+{% endblock %}

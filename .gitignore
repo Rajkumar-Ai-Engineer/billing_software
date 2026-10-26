@@ -1,0 +1,25 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+.pytest_cache/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+
+# Vercel
+.vercel
+
+# Local database backups and client assets
+backups/
+muthukumaran/

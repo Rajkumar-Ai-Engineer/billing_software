@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-container billing-page">
+    <div class="bill-header-row">
+        <div>
+            <h2>{{ page_title }}</h2>
+            <p class="bill-subtitle">Category: <strong>{{ category }}</strong> | Next Bill: <span id="bill-inv-no-display" class="highlight-inv">{{ default_invoice_no }}</span></p>
+        </div>
+        <div class="bill-meta-controls">
+            <span class="badge-date">📅 {{ today_date }}</span>
+        </div>
+    </div>
+
+    <!-- Customer & Billing Information Card -->
+    <div class="card bill-form-card">
+        {% if category == 'Service' %}
+        <input type="hidden" id="gst-mode" value="With GST (Tax Invoice)">
+        <input type="hidden" name="buyer_type" value="Customer">
+
+        <div class="form-grid-3">
+            <div class="form-group">
+                <label for="cust-name">Customer Name <span class="req">*</span></label>
+                <input type="text" id="cust-name" class="input-ctrl" placeholder="Enter Full Name" required>
+            </div>
+
+            <div class="form-group">
+                <label for="cust-mobile">Customer Mobile No <span class="req">*</span></label>
+                <input type="tel" id="cust-mobile" class="input-ctrl" placeholder="10-digit Mobile Number" maxlength="10" required>
+                <small class="field-hint">Must be 10 digits</small>
+            </div>
+
+            <div class="form-group">
+                <label for="cust-address">Address</label>
+                <input type="text" id="cust-address" class="input-ctrl" placeholder="City / Street / Pincode">
+            </div>
+
+            <div class="form-group">
+                <label for="cust-gstin">GSTIN (Optional)</label>
+                <input type="text" id="cust-gstin" class="input-ctrl" placeholder="15-digit GSTIN" maxlength="15" style="text-transform: uppercase;">
+            </div>
+        </div>
+        {% else %}
+        <div class="form-grid-3">
+            <!-- Col 1: Customer Details -->
+            <div class="form-group">
+                <label for="cust-name">Customer / Dealer Name <span class="req">*</span></label>
+                <input type="text" id="cust-name" class="input-ctrl" placeholder="Enter Full Name" required>
+            </div>
+
+            <div class="form-group">
+                <label for="cust-mobile">Customer Mobile No <span class="req">*</span></label>
+                <input type="tel" id="cust-mobile" class="input-ctrl" placeholder="10-digit Mobile Number" maxlength="10" required>
+                <small class="field-hint">Must be 10 digits</small>
+            </div>
+
+            <!-- Col 2: Buyer Type Radio & GST Mode -->
+            <div class="form-group">
+                <label>Pricing Level (Buyer Type)</label>
+                <div class="radio-pill-group" id="buyer-type-group">
+                    <label class="radio-pill">
+                        <input type="radio" name="buyer_type" value="Customer" checked onchange="onBuyerTypeChanged(this.value)">
+                        <span>👤 Customer</span>
+                    </label>
+                    <label class="radio-pill">
+                        <input type="radio" name="buyer_type" value="Dealer" onchange="onBuyerTypeChanged(this.value)">
+                        <span>🏢 Dealer</span>
+                    </label>
+                </div>
+                <small id="buyer-type-lock-hint" class="field-hint" style="display: none; color: #C53030;">🔒 Locked while items are in cart</small>
+            </div>
+
+            <div class="form-group">
+                <label for="gst-mode">GST Mode</label>
+                <select id="gst-mode" class="input-ctrl" onchange="onGstModeChanged(this.value)">
+                    <option value="With GST (Tax Invoice)">With GST (Tax Invoice)</option>
+                    <option value="Without GST (Estimate / Cash)">Without GST (Estimate / Cash)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="cust-gstin">GSTIN (Optional)</label>
+                <input type="text" id="cust-gstin" class="input-ctrl" placeholder="15-digit GSTIN" maxlength="15" style="text-transform: uppercase;">
+            </div>
+
+            <div class="form-group">
+                <label for="cust-address">Address</label>
+                <input type="text" id="cust-address" class="input-ctrl" placeholder="City / Street / Pincode">
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Product Selection with Tick Cases (Checkboxes) -->
+    <div class="card catalog-card">
+        <div class="card-header flex-between">
+            <div>
+                <h3>☑️ Select Products to Add in Bill</h3>
+                <p class="bill-subtitle" style="font-size: 12px; margin-top: 2px;">Tick the box to add item directly to bill. Untick to remove.</p>
+            </div>
+            <div class="catalog-tab-group">
+                <button type="button" class="filter-tab-btn active" id="tab-filter-all" onclick="setProductFilter('all')">
+                    All Products (<span id="all-products-count">0</span>)
+                </button>
+                <button type="button" class="filter-tab-btn" id="tab-filter-ticked" onclick="setProductFilter('ticked')">
+                    ☑ Ticked in Bill (<span id="ticked-products-count">0</span>)
+                </button>
+            </div>
+        </div>
+
+        <!-- Category Filter Pills Bar -->
+        {% if category == 'Spare Parts' %}
+        <div class="catalog-category-pills-bar">
+            <span class="category-pills-label">Category Filter:</span>
+            <button type="button" class="filter-pill active" data-cat="Spare Parts" onclick="setBillingCategoryFilter('Spare Parts', this)">🔩 Spare Parts (<span id="count-cat-spare">0</span>)</button>
+        </div>
+        {% elif category == 'Service' %}
+        <div class="catalog-category-pills-bar">
+            <span class="category-pills-label">Category Filter:</span>
+            <button type="button" class="filter-pill active" data-cat="All" onclick="setBillingCategoryFilter('All', this)">All Items (<span id="count-cat-all">0</span>)</button>
+            <button type="button" class="filter-pill" data-cat="Service" onclick="setBillingCategoryFilter('Service', this)">🔧 Service (<span id="count-cat-service">0</span>)</button>
+            <button type="button" class="filter-pill" data-cat="Spare Parts" onclick="setBillingCategoryFilter('Spare Parts', this)">🔩 Spare Parts (<span id="count-cat-spare">0</span>)</button>
+        </div>
+        {% else %}
+        <div class="catalog-category-pills-bar">
+            <span class="category-pills-label">Category Filter:</span>
+            <button type="button" class="filter-pill active" data-cat="All" onclick="setBillingCategoryFilter('All', this)">All Items (<span id="count-cat-all">0</span>)</button>
+            <button type="button" class="filter-pill" data-cat="Spare Parts" onclick="setBillingCategoryFilter('Spare Parts', this)">🔩 Spare Parts (<span id="count-cat-spare">0</span>)</button>
+        </div>
+        {% endif %}
+
+        <div class="catalog-toolbar">
+            <div class="search-box-wrapper">
+                <span class="search-icon">🔍</span>
+                {% if category == 'Spare Parts' %}
+                <input type="text" id="catalog-search" class="input-ctrl search-input" placeholder="Quick search spare parts by Part No or Name..." oninput="onSearchInput(this.value)">
+                {% elif category == 'Service' %}
+                <input type="text" id="catalog-search" class="input-ctrl search-input" placeholder="Quick search service & spare parts by Part No or Name..." oninput="onSearchInput(this.value)">
+                {% else %}
+                <input type="text" id="catalog-search" class="input-ctrl search-input" placeholder="Quick search products by Part No or Name..." oninput="onSearchInput(this.value)">
+                {% endif %}
+                <button type="button" class="search-clear-btn" id="search-clear" onclick="clearCatalogSearch()" title="Clear search" style="display: none;">✕</button>
+            </div>
+            <div class="selection-status-badge">
+                <span id="selected-items-badge-text">0 items ticked</span>
+            </div>
+        </div>
+
+        <div class="table-responsive catalog-table-scroll">
+            <table class="data-table catalog-table" id="catalog-table">
+                <thead>
+                    <tr>
+                        <th style="width: 75px; text-align: center;">Tick (☑)</th>
+                        <th style="width: 140px;">Part No</th>
+                        <th>Product Name / Category</th>
+                        <th style="width: 120px; text-align: center;">Stock</th>
+                        <th style="width: 130px; text-align: right;">Unit Price (₹)</th>
+                        <th style="width: 145px; text-align: center;">Qty</th>
+                        <th style="width: 130px; text-align: right;">Line Total (₹)</th>
+                    </tr>
+                </thead>
+                <tbody id="catalog-tbody">
+                    <tr><td colspan="7" class="text-center text-muted">Loading products catalog...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Current Bill Table -->
+    <div class="card cart-card" id="current-bill-card">
+        <div class="card-header flex-between">
+            <h3>📋 Current Bill (<span id="cart-item-count">0</span> items)</h3>
+            <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearCart()">Untick All</button>
+        </div>
+        <div class="table-responsive">
+            <table class="data-table cart-table" id="cart-table">
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">S.No</th>
+                        <th>Part No</th>
+                        <th>Product Name</th>
+                        <th>Price (₹)</th>
+                        <th>Qty</th>
+                        <th>Subtotal (₹)</th>
+                        <th>GST %</th>
+                        <th>GST Amt (₹)</th>
+                        <th>Total (₹)</th>
+                        <th style="width: 80px; text-align: center;">Untick</th>
+                    </tr>
+                </thead>
+                <tbody id="cart-tbody">
+                    <tr class="empty-row"><td colspan="10" class="text-center text-muted">No items ticked yet. Tick products above to add to bill.</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Totals & Actions Footer -->
+        <div class="cart-footer-grid">
+            <div class="action-buttons-group">
+                <button type="button" class="btn btn-secondary" onclick="resetForm()">🔄 Reset</button>
+                <button type="button" class="btn btn-success" onclick="saveAndPrint()">🖨️ Save and Print</button>
+                <button type="button" class="btn btn-outline-primary" onclick="printEstimate()">📄 Print Estimate</button>
+                <button type="button" class="btn btn-whatsapp" onclick="saveAndShareWhatsApp()">💬 Save & Share WhatsApp</button>
+            </div>
+            <div class="totals-summary-box">
+                <div class="summary-line">
+                    <span>Subtotal:</span>
+                    <strong id="tot-subtotal">₹ 0.00</strong>
+                </div>
+                <div class="summary-line">
+                    <span>GST Amount:</span>
+                    <strong id="tot-gst">₹ 0.00</strong>
+                </div>
+                <div class="summary-line grand-total-line">
+                    <span>Grand Total:</span>
+                    <strong id="tot-grand">₹ 0.00</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    window.BILL_CATEGORY = "{{ category }}";
+</script>
+<script src="/static/js/billing.js"></script>
+{% endblock %}

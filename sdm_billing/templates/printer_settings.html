@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-container">
+    <div class="page-header-row">
+        <div>
+            <h2>🏷️ TVS-E LP 46 Printer & Hardware Settings</h2>
+            <p class="bill-subtitle">Configure label dimensions, printer languages (TSPL / ZPL / EPL), and run hardware test prints</p>
+        </div>
+    </div>
+
+    <div class="settings-grid">
+        <!-- Configuration Card -->
+        <div class="card flex-2">
+            <div class="card-header">
+                <h3>⚙️ Printer & Label Preferences</h3>
+            </div>
+            <form id="printer-settings-form" onsubmit="event.preventDefault(); savePrinterSettings();">
+                <div class="modal-body">
+                    <!-- Installed Printer Selection -->
+                    <div class="form-group">
+                        <label for="set-printer-name">Select Target Printer (Windows Spooler)</label>
+                        <select id="set-printer-name" class="input-ctrl">
+                            {% for p in printers %}
+                            <option value="{{ p }}" {% if p == settings.printer_name %}selected{% endif %}>{{ p }}</option>
+                            {% endfor %}
+                            <option value="TVS LP 46">TVS LP 46 (Default)</option>
+                        </select>
+                        <small class="field-hint">Enumerated directly from Windows print spooler.</small>
+                    </div>
+
+                    <!-- Print Mode -->
+                    <div class="form-row">
+                        <div class="form-group flex-1">
+                            <label>Print Execution Mode</label>
+                            <div class="radio-pill-group">
+                                <label class="radio-pill">
+                                    <input type="radio" name="set_print_mode" value="driver_html" {% if settings.print_mode == 'driver_html' %}checked{% endif %}>
+                                    <span>🌐 Driver / HTML (Browser)</span>
+                                </label>
+                                <label class="radio-pill">
+                                    <input type="radio" name="set_print_mode" value="raw" {% if settings.print_mode == 'raw' %}checked{% endif %}>
+                                    <span>⚡ Direct RAW (1-Click)</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Printer Command Language -->
+                        <div class="form-group flex-1">
+                            <label>Printer Command Language (RAW mode)</label>
+                            <select id="set-printer-lang" class="input-ctrl">
+                                <option value="TSPL" {% if settings.printer_language == 'TSPL' %}selected{% endif %}>TSPL / TSPL-EZ (TVS LP 46 Native)</option>
+                                <option value="ZPL" {% if settings.printer_language == 'ZPL' %}selected{% endif %}>ZPL II (Zebra Emulation)</option>
+                                <option value="EPL" {% if settings.printer_language == 'EPL' %}selected{% endif %}>EPL (Eltron Emulation)</option>
+                            </select>
+                            <small class="field-hint">TVS-E LP 46 defaults to TSPL. Select ZPL/EPL if your firmware uses emulation.</small>
+                        </div>
+                    </div>
+
+                    <!-- Label Dimensions & Presets -->
+                    <div class="form-row">
+                        <div class="form-group flex-1">
+                            <label>Dimension Preset</label>
+                            <select id="set-dimension-preset" class="input-ctrl" onchange="applyPresetToSettings(this.value)">
+                                <option value="50x30">50 × 30 mm (Default Standard)</option>
+                                <option value="38x25">38 × 25 mm</option>
+                                <option value="50x25">50 × 25 mm</option>
+                                <option value="100x50">100 × 50 mm (Shipping / Large)</option>
+                            </select>
+                        </div>
+                        <div class="form-group flex-1">
+                            <label>Width (mm)</label>
+                            <input type="number" id="set-width-mm" class="input-ctrl" value="{{ settings.label_width_mm }}">
+                        </div>
+                        <div class="form-group flex-1">
+                            <label>Height (mm)</label>
+                            <input type="number" id="set-height-mm" class="input-ctrl" value="{{ settings.label_height_mm }}">
+                        </div>
+                        <div class="form-group flex-1">
+                            <label>Gap (mm)</label>
+                            <input type="number" id="set-gap-mm" class="input-ctrl" value="{{ settings.label_gap_mm }}">
+                        </div>
+                    </div>
+
+                    <!-- Pricing Margins -->
+                    <div class="form-row">
+                        <div class="form-group flex-1">
+                            <label>Customer Margin (+ %)</label>
+                            <input type="number" id="set-margin-cust" class="input-ctrl" step="0.05" value="{{ settings.margin_customer }}">
+                            <small class="field-hint">Default 0.80 (+80% on cost)</small>
+                        </div>
+                        <div class="form-group flex-1">
+                            <label>Dealer Margin (+ %)</label>
+                            <input type="number" id="set-margin-deal" class="input-ctrl" step="0.05" value="{{ settings.margin_dealer }}">
+                            <small class="field-hint">Default 0.40 (+40% on cost)</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-footer-flex">
+                    <button type="submit" class="btn btn-primary">💾 Save Settings</button>
+                    <button type="button" class="btn btn-warning" onclick="runHardwareTestPrint()">🖨️ Send Test Print ("SDM TEST 1234567")</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- TVS LP 46 Hardware Guide Card -->
+        <div class="card flex-1">
+            <div class="card-header">
+                <h3>📖 TVS-E LP 46 Quick Guide</h3>
+            </div>
+            <div class="p-3 text-small">
+                <p><strong>Printer Specs:</strong></p>
+                <ul>
+                    <li>Resolution: <strong>203 DPI (8 dots/mm)</strong></li>
+                    <li>Max Print Width: <strong>108 mm</strong></li>
+                    <li>Connection: <strong>USB 2.0 / Serial</strong></li>
+                    <li>Supported Barcodes: Code128, Code39, QR Code</li>
+                </ul>
+                <hr>
+                <p><strong>Troubleshooting Alignment:</strong></p>
+                <ol>
+                    <li>Turn printer OFF.</li>
+                    <li>Hold down the <strong>FEED</strong> button and turn printer ON.</li>
+                    <li>Release FEED when printer beeps to run automatic media gap calibration.</li>
+                    <li>Use the <strong>Test Print</strong> button to check text clarity.</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+
+    <!-- Print Log History Table -->
+    <div class="card mt-4">
+        <div class="card-header">
+            <h3>📑 Recent Label Print History</h3>
+        </div>
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Type</th>
+                        <th>Reference</th>
+                        <th>Copies</th>
+                        <th>Mode</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for l in logs %}
+                    <tr>
+                        <td>{{ l.timestamp }}</td>
+                        <td><span class="badge-pill">{{ l.label_type }}</span></td>
+                        <td>{{ l.reference }}</td>
+                        <td>{{ l.copies }}</td>
+                        <td>{{ l.mode }}</td>
+                        <td>
+                            {% if l.success %}
+                            <span class="badge-success">Success</span>
+                            {% else %}
+                            <span class="badge-sold" title="{{ l.error_message }}">Failed</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6" class="text-center text-muted">No print jobs logged yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function applyPresetToSettings(preset) {
+    const presets = {
+        "50x30": [50, 30],
+        "38x25": [38, 25],
+        "50x25": [50, 25],
+        "100x50": [100, 50]
+    };
+    if (presets[preset]) {
+        document.getElementById("set-width-mm").value = presets[preset][0];
+        document.getElementById("set-height-mm").value = presets[preset][1];
+    }
+}
+
+async function savePrinterSettings() {
+    const payload = {
+        printer_name: document.getElementById("set-printer-name").value,
+        print_mode: document.querySelector('input[name="set_print_mode"]:checked').value,
+        printer_language: document.getElementById("set-printer-lang").value,
+        label_width_mm: parseInt(document.getElementById("set-width-mm").value),
+        label_height_mm: parseInt(document.getElementById("set-height-mm").value),
+        label_gap_mm: parseInt(document.getElementById("set-gap-mm").value),
+        margin_customer: parseFloat(document.getElementById("set-margin-cust").value),
+        margin_dealer: parseFloat(document.getElementById("set-margin-deal").value)
+    };
+
+    try {
+        const res = await fetch("/api/labels/settings", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast("Settings saved successfully!", "success");
+        } else {
+            showToast("Failed to save settings: " + (data.message || "Unknown error"), "error");
+        }
+    } catch (e) {
+        showToast("Network error saving settings: " + e.message, "error");
+    }
+}
+
+async function runHardwareTestPrint() {
+    const printerName = document.getElementById("set-printer-name").value;
+    const lang = document.getElementById("set-printer-lang").value;
+    const width = parseInt(document.getElementById("set-width-mm").value);
+    const height = parseInt(document.getElementById("set-height-mm").value);
+
+    showToast("Sending test print to " + printerName + "...", "info");
+
+    try {
+        const res = await fetch("/api/labels/test-print", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                printer_name: printerName,
+                language: lang,
+                width_mm: width,
+                height_mm: height
+            })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast("Test label sent to printer successfully!", "success");
+            setTimeout(() => window.location.reload(), 1500);
+        } else {
+            showToast("Test print failed: " + data.message, "error");
+        }
+    } catch (e) {
+        showToast("Error executing test print: " + e.message, "error");
+    }
+}
+</script>
+{% endblock %}

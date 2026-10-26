@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ doc_title }} - {{ invoice.invoice_no }}</title>
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 12mm 15mm 15mm 15mm;
+        }
+        * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            color: #000;
+            background: #fff;
+            margin: 0;
+            padding: 15px;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        .no-print-bar {
+            background: #f1f5f9;
+            padding: 10px 15px;
+            border-bottom: 1px solid #cbd5e1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .btn-print {
+            background: #2E7D32;
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .header-wrap {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #000;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .header-logo {
+            max-height: 75px;
+            max-width: 130px;
+            object-fit: contain;
+        }
+        .shop-name {
+            color: #2E7D32;
+            margin: 0;
+            font-size: 24px;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+        }
+        .shop-subtitle {
+            color: #1A365D;
+            font-size: 13px;
+            font-weight: bold;
+            margin: 2px 0;
+            letter-spacing: 0.5px;
+        }
+        .shop-contact {
+            margin: 3px 0 0 0;
+            font-size: 11px;
+            color: #333;
+        }
+        .header-qr {
+            text-align: center;
+        }
+        .qr-img {
+            max-height: 80px;
+            max-width: 80px;
+            display: block;
+            margin: 0 auto;
+        }
+        .doc-title-banner {
+            text-align: center;
+            font-size: 16px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            background: #e2e8f0;
+            border: 1px solid #000;
+            padding: 4px;
+            margin-bottom: 15px;
+        }
+        .info-grid {
+            display: flex;
+            justify-content: space-between;
+            border: 1px solid #000;
+            padding: 10px;
+            background: #fafafa;
+            margin-bottom: 15px;
+        }
+        .info-col {
+            flex: 1;
+        }
+        .info-col.right {
+            text-align: right;
+        }
+        table.items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        table.items-table th, table.items-table td {
+            border: 1px solid #000;
+            padding: 7px 6px;
+            font-size: 12px;
+        }
+        table.items-table th {
+            background-color: #e2e8f0 !important;
+            font-weight: bold;
+            text-align: center;
+        }
+        table.items-table td.text-center { text-align: center; }
+        table.items-table td.text-right { text-align: right; }
+        .summary-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-top: 15px;
+        }
+        .sig-box {
+            width: 45%;
+            padding-top: 50px;
+            font-size: 12px;
+            font-weight: bold;
+            border-top: 1px dashed #777;
+            text-align: center;
+        }
+        .totals-box {
+            width: 45%;
+            border: 1px solid #000;
+            background: #fafafa;
+            padding: 10px 14px;
+        }
+        .totals-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            font-size: 13px;
+        }
+        .grand-total-row {
+            font-size: 15px;
+            font-weight: bold;
+            border-top: 2px solid #000;
+            padding-top: 6px;
+            margin-top: 6px;
+        }
+        .terms-box {
+            margin-top: 25px;
+            border-top: 1px solid #ccc;
+            padding-top: 8px;
+            font-size: 10px;
+            color: #555;
+        }
+        @media print {
+            .no-print-bar { display: none !important; }
+            body { padding: 0 !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print-bar">
+        <span>Sri Dhanam Motors - Printable Invoice Document</span>
+        <div>
+            <button class="btn-print" onclick="window.print()">🖨️ Print Now</button>
+            <button class="btn-print" style="background: #475569;" onclick="window.close()">Close</button>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <div class="header-wrap">
+        <div class="header-left">
+            <img src="/static/img/logo.png" alt="Logo" class="header-logo" onerror="this.style.display='none'">
+            <div>
+                <h1 class="shop-name">{{ shop_name }}</h1>
+                <div class="shop-subtitle">{{ brand_subtitle }}</div>
+                <div class="shop-contact">
+                    {{ shop_address }}<br>
+                    <strong>Ph:</strong> {{ shop_phones }} | <strong>GSTIN:</strong> {{ shop_gstin }}
+                </div>
+            </div>
+        </div>
+        <div class="header-qr">
+            {% if qr_b64 %}
+            <img src="data:image/png;base64,{{ qr_b64 }}" alt="Invoice QR" class="qr-img">
+            <div style="font-size: 9px; margin-top: 2px;">Verify Bill</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Document Banner -->
+    <div class="doc-title-banner">{{ doc_title }}</div>
+
+    <!-- Billed To & Document Details -->
+    <div class="info-grid">
+        <div class="info-col">
+            <strong>Billed To:</strong><br>
+            <strong>{{ invoice.customer_name if invoice.customer_name else 'Cash Customer' }}</strong><br>
+            {% if invoice.mobile %}Ph: {{ invoice.mobile }}<br>{% endif %}
+            {% if invoice.address %}Address: {{ invoice.address }}<br>{% endif %}
+            GSTIN: {{ invoice.gstin if invoice.gstin else 'N/A' }}
+        </div>
+        <div class="info-col right">
+            <strong>S:No:</strong> {{ invoice.invoice_no }}<br>
+            <strong>Date:</strong> {{ invoice.date }} &nbsp;|&nbsp; {{ invoice.time }}<br>
+            <strong>Category:</strong> {{ invoice.category | upper }}<br>
+            {% if invoice.buyer_type %}<strong>Type:</strong> {{ invoice.buyer_type }}<br>{% endif %}
+        </div>
+    </div>
+
+    <!-- Items Table -->
+    <table class="items-table">
+        <thead>
+            <tr>
+                <th style="width: 35px;">S.No</th>
+                <th style="width: 100px;">Part No</th>
+                <th>Product / Service Description</th>
+                <th style="width: 80px;">Price</th>
+                <th style="width: 45px;">Qty</th>
+                <th style="width: 85px;">Sub Total</th>
+                <th style="width: 55px;">GST %</th>
+                <th style="width: 80px;">GST Amt</th>
+                <th style="width: 90px;">Total (₹)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in (items if items is defined and items is not none else invoice.items) %}
+            <tr>
+                <td class="text-center">{{ loop.index }}</td>
+                <td class="text-center">{{ item.part_no }}</td>
+                <td>{{ item.product_name }}</td>
+                <td class="text-right">{{ format_inr(item.price if item.price is defined and item.price is not none else item.unit_price) }}</td>
+                <td class="text-center">{{ item.qty }}</td>
+                <td class="text-right">{{ format_inr(item.subtotal) }}</td>
+                <td class="text-center">{{ item.gst_percent }}%</td>
+                <td class="text-right">{{ format_inr(item.gst_amount) }}</td>
+                <td class="text-right"><strong>{{ format_inr(item.total) }}</strong></td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="9" class="text-center">No line items stored (Legacy Invoice Record).</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Totals Summary & Signatures -->
+    <div class="summary-container">
+        <div class="sig-box">
+            Signature
+        </div>
+        <div class="totals-box">
+            <div class="totals-row">
+                <span>Base Amount:</span>
+                <span>{{ format_inr(invoice.base_total) }}</span>
+            </div>
+            <div class="totals-row">
+                <span>GST Amount:</span>
+                <span>{{ format_inr(invoice.gst_amount) }}</span>
+            </div>
+            <div class="totals-row grand-total-row">
+                <span>Grand Total:</span>
+                <span>{{ format_inr(invoice.grand_total) }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="terms-box">
+        <strong>Terms & Conditions:</strong> Goods once sold will not be taken back or exchanged. Warranty as per manufacturer terms. Subject to Harur jurisdiction.
+    </div>
+
+    <script>
+        // Auto trigger print dialog after page renders (only if opened as top-level window)
+        window.addEventListener("DOMContentLoaded", function() {
+            if (window.self === window.top) {
+                setTimeout(function() {
+                    window.print();
+                }, 300);
+            }
+        });
+    </script>
+</body>
+</html>

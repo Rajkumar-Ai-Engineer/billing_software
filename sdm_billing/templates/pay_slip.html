@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pay Slip - {{ worker.name }} ({{ salary.month_name }} {{ salary.year }}) - Sri Dhanam Motors</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+        }
+        body {
+            background-color: #f1f5f9;
+            padding: 30px 15px;
+            color: #1e293b;
+        }
+        .slip-container {
+            max-width: 680px;
+            margin: 0 auto;
+            background: #ffffff;
+            border: 2px solid #1A365D;
+            border-radius: 8px;
+            padding: 28px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .slip-header {
+            text-align: center;
+            border-bottom: 2px solid #2E7D32;
+            padding-bottom: 14px;
+            margin-bottom: 18px;
+        }
+        .shop-name {
+            font-size: 26px;
+            font-weight: 800;
+            color: #2E7D32;
+            letter-spacing: 0.5px;
+        }
+        .shop-sub {
+            font-size: 13px;
+            font-weight: 700;
+            color: #2B6CB0;
+            margin-top: 2px;
+        }
+        .shop-addr {
+            font-size: 11px;
+            color: #475569;
+            margin-top: 4px;
+        }
+        .slip-title {
+            background: #1A365D;
+            color: #ffffff;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 800;
+            padding: 6px;
+            margin-bottom: 16px;
+            border-radius: 4px;
+            letter-spacing: 1px;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 18px;
+            background: #f8fafc;
+            padding: 12px 16px;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            font-size: 13px;
+        }
+        .info-col p {
+            margin-bottom: 4px;
+        }
+        .info-col strong {
+            color: #1A365D;
+        }
+        table.slip-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 18px;
+            font-size: 13px;
+        }
+        table.slip-table th, table.slip-table td {
+            border: 1px solid #cbd5e1;
+            padding: 8px 12px;
+        }
+        table.slip-table th {
+            background-color: #f1f5f9;
+            color: #1A365D;
+            font-weight: 700;
+            text-align: left;
+        }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        .row-highlight {
+            background-color: #f0fdf4;
+            font-weight: 800;
+            font-size: 15px;
+            color: #2E7D32;
+        }
+        .policy-box {
+            background: #e0f2fe;
+            border-left: 4px solid #0284c7;
+            padding: 10px 14px;
+            font-size: 11px;
+            color: #0369a1;
+            margin-bottom: 24px;
+            border-radius: 4px;
+            line-height: 1.4;
+        }
+        .sig-row {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 50px;
+            padding-top: 10px;
+        }
+        .sig-box {
+            text-align: center;
+            width: 200px;
+            border-top: 1px dashed #64748b;
+            padding-top: 6px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #334155;
+        }
+        .action-bar {
+            max-width: 680px;
+            margin: 18px auto 0 auto;
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+        }
+        .btn {
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: 700;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-print { background: #1A365D; color: #fff; }
+        .btn-wa { background: #25D366; color: #fff; }
+        .btn-close { background: #64748b; color: #fff; }
+
+        @media print {
+            body { background: #fff; padding: 0; }
+            .action-bar { display: none; }
+            .slip-container { border: 1px solid #000; box-shadow: none; max-width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="slip-container">
+        <!-- Shop Header -->
+        <div class="slip-header">
+            <div class="shop-name">{{ shop_name }}</div>
+            <div class="shop-sub">{{ shop_tagline }}</div>
+            <div class="shop-addr">📍 {{ shop_address }} &nbsp;|&nbsp; 📞 {{ shop_phones }}</div>
+        </div>
+
+        <div class="slip-title">
+            STAFF SALARY VOUCHER & PAY SLIP - {{ salary.month_name|upper }} {{ salary.year }}
+        </div>
+
+        <!-- Worker Information -->
+        <div class="info-grid">
+            <div class="info-col">
+                <p><strong>Worker Name:</strong> {{ worker.name }}</p>
+                <p><strong>Designation:</strong> {{ worker.role }}</p>
+                <p><strong>Mobile No:</strong> {{ worker.phone if worker.phone else 'N/A' }}</p>
+            </div>
+            <div class="info-col">
+                <p><strong>Pay Period:</strong> {{ salary.month_name }} {{ salary.year }}</p>
+                <p><strong>Slip Date:</strong> {{ current_date }}</p>
+                <p><strong>Shop Days:</strong> {{ salary.days_in_month }} Days</p>
+            </div>
+        </div>
+
+        <!-- Attendance & Salary Breakdown -->
+        <table class="slip-table">
+            <thead>
+                <tr>
+                    <th>Description / Component</th>
+                    <th class="text-center" style="width: 120px;">Units / Days</th>
+                    <th class="text-right" style="width: 140px;">Amount (₹)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Base Monthly Salary</strong></td>
+                    <td class="text-center">{{ salary.days_in_month }} Days</td>
+                    <td class="text-right">₹{{ "{:,.2f}".format(salary.monthly_salary) }}</td>
+                </tr>
+                <tr>
+                    <td>Present Days (P)</td>
+                    <td class="text-center">{{ salary.present_days }}</td>
+                    <td class="text-right">-</td>
+                </tr>
+                <tr>
+                    <td>Total Absent / Leave Days</td>
+                    <td class="text-center">{{ salary.absent_days }}</td>
+                    <td class="text-right">-</td>
+                </tr>
+                <tr>
+                    <td><strong>Paid Leave Benefit (1 Day Allowed)</strong></td>
+                    <td class="text-center" style="color: #2E7D32; font-weight: 700;">+{{ salary.paid_leaves_used }} Day (Paid)</td>
+                    <td class="text-right" style="color: #2E7D32;">₹0.00 (No deduction)</td>
+                </tr>
+                <tr>
+                    <td>Excess Unpaid Leave Days (Deductible)</td>
+                    <td class="text-center" style="color: #dc2626; font-weight: 700;">{{ salary.deductible_leave_days }} Days</td>
+                    <td class="text-right" style="color: #dc2626;">
+                        {% if salary.deduction_amount > 0 %}
+                        -₹{{ "{:,.2f}".format(salary.deduction_amount) }}
+                        {% else %}
+                        ₹0.00
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td>Daily Wage Rate</td>
+                    <td class="text-center">Per Day</td>
+                    <td class="text-right">₹{{ "%.2f"|format(salary.daily_wage) }}</td>
+                </tr>
+                {% if salary.total_advances > 0 %}
+                <tr>
+                    <td>Salary Advance Paid Mid-Month</td>
+                    <td class="text-center">{{ advances|length }} Payout(s)</td>
+                    <td class="text-right" style="color: #d97706;">-₹{{ "{:,.2f}".format(salary.total_advances) }}</td>
+                </tr>
+                {% endif %}
+                <tr class="row-highlight">
+                    <td><strong>NET PAYABLE SALARY</strong></td>
+                    <td class="text-center"><strong>PAID IN FULL</strong></td>
+                    <td class="text-right"><strong>₹{{ "{:,.2f}".format(salary.net_payable_salary) }}</strong></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- Policy Note -->
+        <div class="policy-box">
+            <strong>💡 Shop Policy Note:</strong> Every worker is entitled to 1 paid leave per month without salary deduction. When a worker takes 2 days leave, 1 day salary is reduced (Total Leaves - 1). Status: <strong>{{ salary.rule_tag }}</strong>.
+        </div>
+
+        <!-- Signatures -->
+        <div class="sig-row">
+            <div class="sig-box">
+                Worker Signature
+            </div>
+            <div class="sig-box">
+                Authorized Signatory<br>
+                <strong>Sri Dhanam Motors</strong>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="action-bar">
+        <button class="btn btn-print" onclick="window.print()">🖨️ Print Pay Slip</button>
+        <button class="btn btn-wa" onclick="sendWhatsApp()">💬 WhatsApp Pay Slip</button>
+        <button class="btn btn-close" onclick="window.close()">✖ Close</button>
+    </div>
+
+    <script>
+        function sendWhatsApp() {
+            const name = "{{ worker.name }}";
+            let phone = "{{ worker.phone or '' }}".replace(/\D/g, '');
+            if (phone.length === 10) phone = '91' + phone;
+
+            const text = `*SRI DHANAM MOTORS - SALARY SLIP*\n` +
+                `------------------------------------\n` +
+                `👤 Worker: ${name}\n` +
+                `📅 Month: {{ salary.month_name }} {{ salary.year }}\n` +
+                `💼 Base Salary: ₹{{ "{:,.2f}".format(salary.monthly_salary) }}\n` +
+                `🟢 Present Days: {{ salary.present_days }}\n` +
+                `🔴 Leave Days: {{ salary.absent_days }}\n` +
+                `✨ Paid Leave Applied: {{ salary.paid_leaves_used }} Day\n` +
+                `📉 Leave Deductions: ₹{{ "{:,.2f}".format(salary.deduction_amount) }}\n` +
+                `------------------------------------\n` +
+                `💰 *NET SALARY: ₹{{ "{:,.2f}".format(salary.net_payable_salary) }}*\n` +
+                `------------------------------------\n` +
+                `Thank you for your service at Sri Dhanam Motors!`;
+
+            const url = phone ? `https://wa.me/${phone}?text=${encodeURIComponent(text)}` : `https://wa.me/?text=${encodeURIComponent(text)}`;
+            window.open(url, '_blank');
+        }
+    </script>
+</body>
+</html>

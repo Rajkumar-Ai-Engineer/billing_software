@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - {{ shop_name }}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        body {
+            background-color: #f1f5f9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .login-card {
+            background: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+        .login-logo {
+            max-height: 70px;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <img src="/static/img/logo.png" alt="Logo" class="login-logo" onerror="this.style.display='none'">
+        <h2 style="color: #2E7D32; margin-bottom: 5px;">{{ shop_name }}</h2>
+        <p style="color: #64748b; font-size: 14px; margin-top: 0; margin-bottom: 20px;">Staff Portal Authentication</p>
+
+        {% if error %}
+        <div style="background: #fee2e2; color: #b91c1c; padding: 10px; border-radius: 4px; margin-bottom: 15px; font-size: 13px;">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <form action="/login" method="POST">
+            <div class="form-group" style="text-align: left; margin-bottom: 20px;">
+                <label for="password">Enter Staff Access Password</label>
+                <input type="password" id="password" name="password" class="input-ctrl" required placeholder="••••••••">
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Sign In</button>
+        </form>
+    </div>
+</body>
+</html>

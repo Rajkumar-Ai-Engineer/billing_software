@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-container">
+    <div class="page-header-row">
+        <h2>📊 Business Performance Dashboard</h2>
+        <div class="period-switch-group">
+            <button class="btn-toggle active" data-period="daily" onclick="changePeriod('daily')">Daily</button>
+            <button class="btn-toggle" data-period="weekly" onclick="changePeriod('weekly')">Weekly</button>
+            <button class="btn-toggle" data-period="monthly" onclick="changePeriod('monthly')">Monthly</button>
+            <div class="date-picker-wrap">
+                <input type="date" id="dash-date" value="{{ today_date }}" onchange="onDateChanged()" class="input-date">
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Metrics Cards -->
+    <div class="metrics-grid">
+        <div class="metric-card metric-primary">
+            <div class="metric-icon">💰</div>
+            <div class="metric-body">
+                <span class="metric-title">Total Sales (Grand Total)</span>
+                <span class="metric-value" id="val-total-sales">₹ 0.00</span>
+                <span class="metric-sub" id="val-invoice-count">0 Invoices</span>
+            </div>
+        </div>
+        <div class="metric-card metric-info">
+            <div class="metric-icon">🏛️</div>
+            <div class="metric-body">
+                <span class="metric-title">GST Collected</span>
+                <span class="metric-value" id="val-total-gst">₹ 0.00</span>
+                <span class="metric-sub">Tax Revenue</span>
+            </div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-icon">⚙️</div>
+            <div class="metric-body">
+                <span class="metric-title">Spare Parts Sales</span>
+                <span class="metric-value" id="val-spare-sales">₹ 0.00</span>
+                <span class="metric-sub" id="val-spare-count">0 Bills</span>
+            </div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-icon">🔧</div>
+            <div class="metric-body">
+                <span class="metric-title">Service Sales</span>
+                <span class="metric-value" id="val-service-sales">₹ 0.00</span>
+                <span class="metric-sub" id="val-service-count">0 Bills</span>
+            </div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-icon">🛵</div>
+            <div class="metric-body">
+                <span class="metric-title">Vehicle Sales</span>
+                <span class="metric-value" id="val-vehicle-sales">₹ 0.00</span>
+                <span class="metric-sub" id="val-vehicle-count">0 Bills</span>
+            </div>
+        </div>
+        <div class="metric-card" style="border-left: 4px solid #e11d48;">
+            <div class="metric-icon">💸</div>
+            <div class="metric-body">
+                <span class="metric-title"><a href="/expenses" style="text-decoration: none; color: inherit;">Daily Expenses</a></span>
+                <span class="metric-value" id="val-total-expenses" style="color: #e11d48;">₹ 0.00</span>
+                <span class="metric-sub"><a href="/expenses" style="color: #64748b; text-decoration: underline;">View Expenses &rarr;</a></span>
+            </div>
+        </div>
+        <div class="metric-card" style="border-left: 4px solid #0891b2;">
+            <div class="metric-icon">📥</div>
+            <div class="metric-body">
+                <span class="metric-title"><a href="/purchases" style="text-decoration: none; color: inherit;">Inward Purchases</a></span>
+                <span class="metric-value" id="val-total-purchases" style="color: #0891b2;">₹ 0.00</span>
+                <span class="metric-sub"><a href="/purchases" style="color: #64748b; text-decoration: underline;">View Inward &rarr;</a></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="charts-row">
+        <div class="chart-box main-chart-box">
+            <div class="chart-header">
+                <h3>📈 Sales Trends Over Time</h3>
+                <span class="badge" id="chart-period-badge">Today</span>
+            </div>
+            <div class="chart-canvas-wrap">
+                <canvas id="salesTrendChart"></canvas>
+            </div>
+        </div>
+        <div class="chart-box pie-chart-box">
+            <div class="chart-header">
+                <h3>🍩 Revenue by Category</h3>
+            </div>
+            <div class="chart-canvas-wrap">
+                <canvas id="categoryPieChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tables Row: Recent Invoices & Low Stock Alert -->
+    <div class="dashboard-tables-row">
+        <!-- Recent Invoices Table -->
+        <div class="card table-card flex-2">
+            <div class="card-header flex-between">
+                <h3>🧾 Recent Invoices</h3>
+                <a href="/products" class="link-small">View Master</a>
+            </div>
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Invoice No</th>
+                            <th>Date</th>
+                            <th>Category</th>
+                            <th>Customer</th>
+                            <th>Total (₹)</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recent-invoices-tbody">
+                        <tr><td colspan="6" class="text-center">Loading invoices...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Low Stock Alert Box -->
+        <div class="card table-card flex-1">
+            <div class="card-header alert-header">
+                <h3>⚠️ Low Stock Alert (≤ 3)</h3>
+            </div>
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Part No</th>
+                            <th>Name</th>
+                            <th>Stock</th>
+                        </tr>
+                    </thead>
+                    <tbody id="low-stock-tbody">
+                        <tr><td colspan="3" class="text-center">Checking stock levels...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/dashboard.js"></script>
+{% endblock %}

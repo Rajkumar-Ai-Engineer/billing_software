@@ -1,0 +1,373 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-container">
+    <div class="page-header-row">
+        <div>
+            <h2>📦 Product & Stock Master</h2>
+            <p class="bill-subtitle">Manage inventory, inline editing, stock adjustments, CSV/Excel imports & label printing</p>
+        </div>
+        <div class="header-action-btns">
+            <button class="btn btn-primary" onclick="openNewProductModal()">➕ New Product</button>
+            <button class="btn btn-secondary" onclick="openUploadModal()">📤 Import CSV/Excel</button>
+            <div class="dropdown-wrap">
+                <button class="btn btn-outline-primary" onclick="toggleExportMenu()">📥 Export Data ▾</button>
+                <div class="dropdown-menu" id="export-dropdown" style="display: none;">
+                    <a href="/api/products/export?format=csv" class="dropdown-item">Download Products (CSV)</a>
+                    <a href="/api/products/export?format=excel" class="dropdown-item">Download Products (Excel)</a>
+                    <hr class="dropdown-sep">
+                    <a href="#" onclick="openInvoiceExportModal(); return false;" class="dropdown-item">Download Invoices Report</a>
+                </div>
+            </div>
+            <button class="btn btn-outline-success" onclick="printBulkProductLabels()">🏷️ Bulk Print Labels</button>
+        </div>
+    </div>
+
+    <!-- Filter & Search Controls Bar -->
+    <div class="card p-3 mb-3">
+        <div class="search-filter-row">
+            <div class="filter-pills-wrap">
+                <button class="filter-pill active" data-cat="All" onclick="setCategoryFilter('All', this)">All</button>
+                <button class="filter-pill" data-cat="Spare Parts" onclick="setCategoryFilter('Spare Parts', this)">Spare Parts</button>
+                <button class="filter-pill" data-cat="Service" onclick="setCategoryFilter('Service', this)">Service</button>
+                <button class="filter-pill" data-cat="Vehicle Sales" onclick="setCategoryFilter('Vehicle Sales', this)">Vehicle Sales</button>
+            </div>
+            <div class="search-box-wrap" style="display: flex; gap: 8px;">
+                <input type="text" id="product-search-input" class="input-ctrl" placeholder="🔍 Search Part No or Name..." onkeyup="onSearchProducts(this.value)">
+                <button type="button" class="btn btn-sm btn-primary" onclick="openNewProductModal()" style="white-space: nowrap;">➕ Add Product</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Products Data Table -->
+    <div class="card">
+        <div class="table-responsive">
+            <table class="data-table" id="products-table">
+                <thead>
+                    <tr>
+                        <th style="width: 30px;"><input type="checkbox" id="select-all-prods" onchange="toggleSelectAll(this.checked)"></th>
+                        <th>Part No</th>
+                        <th>Product Name</th>
+                        <th>HSN</th>
+                        <th>Cost Price (₹)</th>
+                        <th>GST %</th>
+                        <th>Category</th>
+                        <th>Stock Qty</th>
+                        <th style="width: 320px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="products-tbody">
+                    {% for p in products %}
+                    <tr data-part="{{ p.part_no }}" data-cat="{{ p.category }}" id="row-{{ p.part_no }}">
+                        <td><input type="checkbox" class="prod-checkbox" value="{{ p.part_no }}"></td>
+                        <td><strong>{{ p.part_no }}</strong></td>
+                        <td class="editable-cell" onclick="enableInlineEdit(this, 'name', '{{ p.part_no }}')">{{ p.name }}</td>
+                        <td class="editable-cell" onclick="enableInlineEdit(this, 'hsn', '{{ p.part_no }}')">{{ p.hsn }}</td>
+                        <td class="editable-cell text-right" onclick="enableInlineEdit(this, 'cost_price', '{{ p.part_no }}')">{{ "%.2f"|format(p.cost_price) }}</td>
+                        <td class="editable-cell text-center" onclick="enableInlineEdit(this, 'gst_percent', '{{ p.part_no }}')">{{ p.gst_percent }}%</td>
+                        <td><span class="badge-pill">{{ p.category }}</span></td>
+                        <td class="stock-cell {% if p.stock_qty <= 3 %}stock-low{% endif %}">
+                            <strong>{{ p.stock_qty }}</strong>
+                        </td>
+                        <td>
+                            <div class="action-btn-group">
+                                <button type="button" class="btn btn-xs btn-outline-primary" title="Adjust Stock" onclick="openStockAdjustModal('{{ p.part_no }}', '{{ p.name }}', {{ p.stock_qty }}, {{ p.cost_price }})">⚡ Stock</button>
+                                <button type="button" class="btn btn-xs btn-outline-success" title="Print Barcode Label" onclick="openProductPrintModal('{{ p.part_no }}', '{{ p.name }}', {{ p.cost_price }})">🏷️ Label</button>
+                                <button type="button" class="btn btn-xs btn-outline-danger" title="Delete Product" onclick="confirmDeleteProduct('{{ p.part_no }}')">🗑️</button>
+                                <button type="button" class="btn btn-xs btn-primary btn-add-stock" title="Add to Store & Excel file" onclick="openQuickAddModal('{{ p.part_no }}', '{{ p.name }}', {{ p.stock_qty }})">➕ Add</button>
+                                <button type="button" class="btn btn-xs btn-reduce-stock" title="Reduce / Remove Stock from Store & Excel" onclick="openQuickReduceModal('{{ p.part_no }}', '{{ p.name }}', {{ p.stock_qty }})">➖ Reduce</button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="9" class="text-center text-muted">No products found. Import CSV or create one.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: New Product -->
+<div id="new-product-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>➕ Add New Product</h3>
+            <button class="modal-close-btn" onclick="closeModal('new-product-modal')">&times;</button>
+        </div>
+        <form id="new-product-form" onsubmit="event.preventDefault(); submitNewProduct();">
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label>Part No <span class="req">*</span></label>
+                        <input type="text" id="new-p-part" class="input-ctrl" required placeholder="e.g. SDM-MOT-250">
+                    </div>
+                    <div class="form-group flex-2">
+                        <label>Product Name <span class="req">*</span></label>
+                        <input type="text" id="new-p-name" class="input-ctrl" required placeholder="Full Product Name">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label>Category <span class="req">*</span></label>
+                        <select id="new-p-cat" class="input-ctrl" onchange="onNewCatChange(this.value)">
+                            <option value="Spare Parts">Spare Parts</option>
+                            <option value="Service">Service</option>
+                            <option value="Vehicle Sales">Vehicle Sales</option>
+                        </select>
+                    </div>
+                    <div class="form-group flex-1">
+                        <label>HSN Code</label>
+                        <input type="text" id="new-p-hsn" class="input-ctrl" placeholder="e.g. 8507">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label>Cost Price (₹) <span class="req">*</span></label>
+                        <input type="number" id="new-p-cost" class="input-ctrl" step="0.01" min="0" required placeholder="Cost Price">
+                    </div>
+                    <div class="form-group flex-1">
+                        <label>GST % <span class="req">*</span></label>
+                        <input type="number" id="new-p-gst" class="input-ctrl" value="18" step="0.1" min="0" required>
+                    </div>
+                    <div class="form-group flex-1">
+                        <label>Initial Stock Qty</label>
+                        <input type="number" id="new-p-stock" class="input-ctrl" value="10" min="0">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('new-product-modal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Product</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Stock Adjustment -->
+<div id="stock-adjust-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>⚡ Stock Adjustment</h3>
+            <button class="modal-close-btn" onclick="closeModal('stock-adjust-modal')">&times;</button>
+        </div>
+        <form id="stock-adjust-form" onsubmit="event.preventDefault(); submitStockAdjust();">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Product</label>
+                    <input type="text" id="adj-prod-display" readonly class="input-readonly">
+                    <input type="hidden" id="adj-part-no">
+                </div>
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label>Adjustment (+ or - Qty) <span class="req">*</span></label>
+                        <input type="number" id="adj-change" class="input-ctrl" required placeholder="e.g. +5 or -2">
+                        <div style="display: flex; gap: 6px; margin-top: 6px;">
+                            <button type="button" class="btn btn-xs btn-outline-success" onclick="toggleStockAdjustSign('+')">➕ Add (+)</button>
+                            <button type="button" class="btn btn-xs btn-outline-danger" onclick="toggleStockAdjustSign('-')">➖ Reduce (-)</button>
+                        </div>
+                        <small class="field-hint">Use negative numbers or click 'Reduce (-)' to reduce stock</small>
+                    </div>
+                    <div class="form-group flex-1">
+                        <label>Price (₹)</label>
+                        <input type="number" id="adj-price" class="input-ctrl" step="0.01" min="0" placeholder="e.g. 1000.00">
+                        <small class="field-hint">Current unit price (editable)</small>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('stock-adjust-modal')">Cancel</button>
+                <button type="submit" class="btn btn-success">Update Stock</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Upload CSV/Excel Preview & Commit -->
+<div id="upload-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content modal-large">
+        <div class="modal-header">
+            <h3>📤 Import Products from CSV or Excel</h3>
+            <button class="modal-close-btn" onclick="closeModal('upload-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="upload-dropzone">
+                <input type="file" id="upload-file-input" accept=".csv, .xlsx, .xls" onchange="previewUploadedFile(this.files[0])">
+                <p>Drag and drop products CSV or Excel file here, or click to browse</p>
+                <small class="field-hint">Supports columns: Part No, Product Name, HSN, Cost Price, GST %, Category, Stock Qty</small>
+            </div>
+
+            <!-- Upload Preview Area -->
+            <div id="upload-preview-area" style="display: none;" class="mt-3">
+                <div class="flex-between mb-2">
+                    <h4>Preview (<span id="upload-count">0</span> items detected)</h4>
+                    <span id="upload-errors-badge" class="badge-sold" style="display: none;">Errors Found</span>
+                </div>
+                <div id="upload-errors-list" class="alert-box-warning" style="display: none;"></div>
+                <div class="table-responsive max-height-300">
+                    <table class="data-table" id="upload-preview-table">
+                        <thead>
+                            <tr>
+                                <th>Part No</th>
+                                <th>Product Name</th>
+                                <th>Cost Price</th>
+                                <th>GST %</th>
+                                <th>Category</th>
+                                <th>Stock</th>
+                            </tr>
+                        </thead>
+                        <tbody id="upload-preview-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('upload-modal')">Cancel</button>
+            <button type="button" class="btn btn-success" id="btn-commit-upload" style="display: none;" onclick="commitUpload()">Confirm & Commit Import</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Invoice Export Filter -->
+<div id="invoice-export-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>📥 Export Invoices Report</h3>
+            <button class="modal-close-btn" onclick="closeModal('invoice-export-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-row">
+                <div class="form-group flex-1">
+                    <label>Start Date</label>
+                    <input type="date" id="exp-start-date" class="input-ctrl">
+                </div>
+                <div class="form-group flex-1">
+                    <label>End Date</label>
+                    <input type="date" id="exp-end-date" class="input-ctrl">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Export Format</label>
+                <select id="exp-format" class="input-ctrl">
+                    <option value="csv">CSV (.csv)</option>
+                    <option value="excel">Excel (.xlsx)</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('invoice-export-modal')">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="triggerInvoiceExport()">Download Report</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Quick Add to Store & Excel -->
+<div id="quick-add-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 480px;">
+        <div class="modal-header">
+            <h3>➕ Add Stock to Store & Excel</h3>
+            <button class="modal-close-btn" onclick="closeModal('quick-add-modal')">&times;</button>
+        </div>
+        <form id="quick-add-form" onsubmit="event.preventDefault(); submitQuickAdd();">
+            <div class="modal-body">
+                <div style="text-align: right; margin-bottom: 8px;">
+                    <a href="#" onclick="switchModalToReduce(); return false;" style="font-size: 12px; color: #dc2626; text-decoration: underline; font-weight: 600;">Want to reduce / remove stock instead? Click here ➔</a>
+                </div>
+                <div class="card p-3 mb-3" style="background: #f8fafc; border: 1px solid #cbd5e1;">
+                    <div style="font-size: 15px; font-weight: bold; color: #1e293b;" id="qa-prod-name">Product Name</div>
+                    <div style="font-size: 12px; color: #64748b; margin-top: 4px;">
+                        Part No: <span id="qa-part-no-display" style="font-weight: 600; color: #0f172a;">SDM0001</span> | 
+                        Current Store Stock: <span id="qa-curr-stock" class="badge-pill" style="font-weight: bold;">0</span>
+                    </div>
+                </div>
+                <input type="hidden" id="qa-part-no">
+
+                <div class="form-group mb-3">
+                    <label style="font-weight: 600;">Quantity to Add to Store <span class="req">*</span></label>
+                    <input type="number" id="qa-qty" class="input-ctrl" min="1" value="1" required style="font-size: 18px; font-weight: bold; text-align: center; height: 44px;">
+                    <div class="quick-qty-pills" style="display: flex; gap: 8px; margin-top: 8px;">
+                        <button type="button" class="btn btn-xs btn-outline-secondary" onclick="setQuickAddQty(1)">+1</button>
+                        <button type="button" class="btn btn-xs btn-outline-secondary" onclick="setQuickAddQty(5)">+5</button>
+                        <button type="button" class="btn btn-xs btn-outline-secondary" onclick="setQuickAddQty(10)">+10</button>
+                        <button type="button" class="btn btn-xs btn-outline-secondary" onclick="setQuickAddQty(25)">+25</button>
+                        <button type="button" class="btn btn-xs btn-outline-secondary" onclick="setQuickAddQty(50)">+50</button>
+                    </div>
+                </div>
+
+                <div class="form-group mb-3">
+                    <label>Reason / Note (Optional)</label>
+                    <input type="text" id="qa-reason" class="input-ctrl" placeholder="e.g. New Stock Received / Added to Store" value="Added to Store">
+                </div>
+
+                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 10px; border-radius: 6px; font-size: 12px; color: #166534; display: flex; align-items: center; gap: 8px;">
+                    <span>💾</span>
+                    <span><strong>Permanent Storage:</strong> Automatically updates database and saves into <code>products_master.csv</code> &amp; <code>products_master.xlsx</code> so next time it shows up!</span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('quick-add-modal')">Cancel</button>
+                <button type="submit" class="btn btn-success" id="btn-submit-quick-add">➕ Add to Store & Excel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Quick Reduce / Remove Stock from Store & Excel -->
+<div id="quick-reduce-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 480px;">
+        <div class="modal-header" style="background: #fff5f5; border-bottom: 1px solid #fed7d7;">
+            <h3 style="color: #991b1b;">➖ Reduce / Remove Stock</h3>
+            <button class="modal-close-btn" onclick="closeModal('quick-reduce-modal')">&times;</button>
+        </div>
+        <form id="quick-reduce-form" onsubmit="event.preventDefault(); submitQuickReduce();">
+            <div class="modal-body">
+                <div style="text-align: right; margin-bottom: 8px;">
+                    <a href="#" onclick="switchModalToAdd(); return false;" style="font-size: 12px; color: #166534; text-decoration: underline; font-weight: 600;">Want to add stock instead? Click here ➔</a>
+                </div>
+                <div class="card p-3 mb-3" style="background: #f8fafc; border: 1px solid #cbd5e1;">
+                    <div style="font-size: 15px; font-weight: bold; color: #1e293b;" id="qr-prod-name">Product Name</div>
+                    <div style="font-size: 12px; color: #64748b; margin-top: 4px;">
+                        Part No: <span id="qr-part-no-display" style="font-weight: 600; color: #0f172a;">SDM0001</span> | 
+                        Current Store Stock: <span id="qr-curr-stock" class="badge-pill" style="font-weight: bold;">0</span>
+                    </div>
+                </div>
+                <input type="hidden" id="qr-part-no">
+
+                <div id="qr-zero-stock-alert" class="alert-box-warning mb-3" style="display: none; background: #fff1f2; border: 1px solid #fecdd3; color: #9f1239; padding: 10px; border-radius: 6px; font-size: 13px;">
+                    ⚠️ <strong>Out of Stock:</strong> This product currently has 0 stock in store. Cannot reduce further.
+                </div>
+
+                <div class="form-group mb-3" id="qr-qty-group">
+                    <label style="font-weight: 600; color: #991b1b;">Quantity to Reduce / Remove <span class="req">*</span></label>
+                    <input type="number" id="qr-qty" class="input-ctrl" min="1" value="1" required style="font-size: 18px; font-weight: bold; text-align: center; height: 44px; border: 2px solid #fca5a5;">
+                    <div class="quick-qty-pills" style="display: flex; gap: 8px; margin-top: 8px;">
+                        <button type="button" class="btn btn-xs btn-outline-danger" onclick="setQuickReduceQty(1)">-1</button>
+                        <button type="button" class="btn btn-xs btn-outline-danger" onclick="setQuickReduceQty(5)">-5</button>
+                        <button type="button" class="btn btn-xs btn-outline-danger" onclick="setQuickReduceQty(10)">-10</button>
+                        <button type="button" class="btn btn-xs btn-outline-danger" onclick="setQuickReduceQty(25)">-25</button>
+                        <button type="button" class="btn btn-xs btn-outline-secondary" onclick="setQuickReduceQty('all')">All Stock</button>
+                    </div>
+                </div>
+
+                <div class="form-group mb-3">
+                    <label>Reason / Note (Optional)</label>
+                    <input type="text" id="qr-reason" class="input-ctrl" placeholder="e.g. Sold / Dispatched / Damaged / Store Reduction" value="Reduced from Store">
+                </div>
+
+                <div style="background: #fff7ed; border: 1px solid #fed7aa; padding: 10px; border-radius: 6px; font-size: 12px; color: #9a3412; display: flex; align-items: center; gap: 8px;">
+                    <span>💾</span>
+                    <span><strong>Permanent Storage:</strong> Automatically updates database and saves into <code>products_master.csv</code> &amp; <code>products_master.xlsx</code> so next time it shows up!</span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('quick-reduce-modal')">Cancel</button>
+                <button type="submit" class="btn btn-danger" id="btn-submit-quick-reduce" style="background-color: #dc2626 !important; border-color: #dc2626 !important;">➖ Reduce Stock</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/products.js"></script>
+{% endblock %}

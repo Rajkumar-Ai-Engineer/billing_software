@@ -1,0 +1,15 @@
+{
+  "printer_name": "TVS LP 46",
+  "print_mode": "driver_html",
+  "printer_language": "EPL",
+  "label_width_mm": 50,
+  "label_height_mm": 30,
+  "label_gap_mm": 3,
+  "dpi": 203,
+  "darkness": 8,
+  "speed": 4,
+  "margin_customer": 0.8,
+  "margin_dealer": 0.4,
+  "auth_enabled": false,
+  "auth_password": "sdm@admin123"
+}

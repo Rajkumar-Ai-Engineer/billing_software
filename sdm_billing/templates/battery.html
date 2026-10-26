@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-container">
+    <div class="page-header-row">
+        <div>
+            <h2>🔋 Battery Serial & QR Generator</h2>
+            <p class="bill-subtitle">Auto serial numbering (SDM-style), Code128 Barcode & QR generator for EV battery packs</p>
+        </div>
+        <div>
+            <span class="badge">Next Projected Serial: <strong id="next-serial-badge">{{ next_serial }}</strong></span>
+        </div>
+    </div>
+
+    <!-- Generator Form & Result Grid -->
+    <div class="generator-grid">
+        <!-- Generator Form Card -->
+        <div class="card flex-1">
+            <div class="card-header">
+                <h3>⚡ Generate Battery Serial & QR</h3>
+            </div>
+            <form id="battery-gen-form" onsubmit="event.preventDefault(); generateBattery();">
+                <div class="form-group">
+                    <label for="battery-type">Battery Chemistry / Type <span class="req">*</span></label>
+                    <select id="battery-type" class="input-ctrl" required>
+                        <option value="LFP" selected>LFP (LiFePO4)</option>
+                        <option value="Li-Ion">Li-Ion (Lithium Ion)</option>
+                    </select>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label for="battery-voltage">Voltage (V) <span class="req">*</span></label>
+                        <input type="number" id="battery-voltage" class="input-ctrl" placeholder="e.g. 48, 60, 72" value="48" step="0.1" required>
+                    </div>
+                    <div class="form-group flex-1">
+                        <label for="battery-ah">Capacity (Ah) <span class="req">*</span></label>
+                        <input type="number" id="battery-ah" class="input-ctrl" placeholder="e.g. 24, 30, 42" value="30" step="0.1" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="battery-create-product" checked>
+                        <span>Create matching product row in inventory (Stock: 1)</span>
+                    </label>
+                    <small class="field-hint">Enables selling this specific battery serial on a Spare Bill</small>
+                </div>
+
+                <div class="form-group mt-3">
+                    <button type="submit" class="btn btn-primary btn-block">⚡ Generate QR & Barcode</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Generated Result Preview Card -->
+        <div class="card flex-1" id="battery-result-card" style="display: none;">
+            <div class="card-header flex-between">
+                <h3>🏷️ Generated Battery Label</h3>
+                <span class="badge-success" id="res-serial-badge">SDM0021</span>
+            </div>
+            <div class="battery-label-display">
+                <div class="label-meta-head">
+                    <div class="shop-small">SRI DHANAM MOTORS</div>
+                    <div class="spec-text" id="res-spec-line">LFP 48V 30Ah</div>
+                </div>
+                <div class="codes-display-row">
+                    <div class="qr-col">
+                        <img id="res-qr-img" src="" alt="Battery QR Code" class="qr-display">
+                    </div>
+                    <div class="bc-col">
+                        <img id="res-bc-img" src="" alt="Battery Barcode" class="barcode-display">
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer-btns">
+                <button type="button" class="btn btn-success" onclick="printGeneratedBatteryLabel()">🖨️ Print Label (TVS LP 46)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Battery History Table -->
+    <div class="card mt-4">
+        <div class="card-header flex-between">
+            <h3>📑 Generated Batteries List</h3>
+            <div class="table-search-box">
+                <input type="text" id="battery-search" placeholder="Search serial / type..." class="input-ctrl-sm" onkeyup="filterBatteryTable(this.value)">
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="data-table" id="batteries-table">
+                <thead>
+                    <tr>
+                        <th>Serial No</th>
+                        <th>Type</th>
+                        <th>Voltage (V)</th>
+                        <th>Ah</th>
+                        <th>Generated At</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="batteries-tbody">
+                    {% for b in batteries %}
+                    <tr>
+                        <td><strong>{{ b.serial }}</strong></td>
+                        <td><span class="badge-pill">{{ b.type }}</span></td>
+                        <td>{{ b.voltage }}V</td>
+                        <td>{{ b.ah }}Ah</td>
+                        <td>{{ b.created_at }}</td>
+                        <td>
+                            {% if b.sold %}
+                            <span class="badge-sold">Sold</span>
+                            {% else %}
+                            <span class="badge-available">In Stock</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="openBatteryPrintModal('{{ b.serial }}', '{{ b.type }}', {{ b.voltage }}, {{ b.ah }})">🏷️ Print</button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="7" class="text-center text-muted">No batteries generated yet. Use the form above to generate one.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/battery.js"></script>
+{% endblock %}
