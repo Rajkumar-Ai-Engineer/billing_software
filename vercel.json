@@ -1,20 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "routes": [
+  "rewrites": [
     {
-      "src": "/static/(.*)",
-      "continue": true
-    },
-    {
-      "src": "/(?<path>.*)",
-      "dest": "/api/index.py",
-      "transforms": [
-        {
-          "type": "request.path",
-          "op": "set",
-          "args": "/$path"
-        }
-      ]
+      "source": "/(.*)",
+      "destination": "/api/index.py"
     }
   ],
   "functions": {
