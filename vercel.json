@@ -2,6 +2,10 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "routes": [
     {
+      "src": "/static/(.*)",
+      "continue": true
+    },
+    {
       "src": "/(?<path>.*)",
       "dest": "/api/index.py",
       "transforms": [
