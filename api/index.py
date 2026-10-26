@@ -26,6 +26,21 @@ _fastapi_app = app
 async def app_handler(scope, receive, send):
     if scope.get("type") == "http":
         path = scope.get("path", "")
+        print(
+            "VERCEL_ASGI_REQUEST",
+            path,
+            {
+                key.decode("latin-1"): value.decode("latin-1")
+                for key, value in scope.get("headers", [])
+                if key.lower() in {
+                    b"x-invoke-path",
+                    b"x-matched-path",
+                    b"x-forwarded-uri",
+                    b"x-original-url",
+                    b"x-vercel-original-url",
+                }
+            },
+        )
         for prefix in ("/api/index.py", "/api/index"):
             if path == prefix or path.startswith(prefix + "/"):
                 scope = dict(scope)
