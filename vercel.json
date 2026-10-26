@@ -2,13 +2,13 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "routes": [
     {
-      "src": "/(.*)",
+      "src": "/(?<path>.*)",
       "dest": "/api/index.py",
       "transforms": [
         {
           "type": "request.path",
           "op": "set",
-          "args": "/$1"
+          "args": "/$path"
         }
       ]
     }
