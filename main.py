@@ -29,7 +29,7 @@ async def app_handler(scope, receive, send):
     """Normalize Vercel function prefixes before forwarding to FastAPI."""
     if scope.get("type") == "http":
         path = scope.get("path", "")
-        for prefix in ("/api/index.py", "/api/index", "/api"):
+        for prefix in ("/main.py", "/api/index.py", "/api/index", "/api"):
             if path == prefix or path.startswith(prefix + "/"):
                 scope = dict(scope)
                 adjusted_path = path[len(prefix):] or "/"

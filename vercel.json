@@ -2,18 +2,14 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "builds": [
     {
-      "src": "api/index.py",
+      "src": "main.py",
       "use": "@vercel/python"
-    },
-    {
-      "src": "public/**",
-      "use": "@vercel/static"
     }
   ],
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "/api/index.py",
+      "dest": "/main.py",
       "transforms": [
         {
           "type": "request.path",
@@ -24,7 +20,7 @@
     }
   ],
   "functions": {
-    "api/index.py": {
+    "main.py": {
       "includeFiles": "{sdm_billing/**,public/**,static/**}",
       "maxDuration": 30
     }
