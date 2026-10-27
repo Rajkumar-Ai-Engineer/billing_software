@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "cleanUrls": true,
   "rewrites": [
     {
       "source": "/(.*)",
@@ -8,7 +9,7 @@
   ],
   "functions": {
     "api/index.py": {
-      "includeFiles": "sdm_billing/**",
+      "includeFiles": "{sdm_billing/**,public/**,static/**}",
       "maxDuration": 30
     }
   }

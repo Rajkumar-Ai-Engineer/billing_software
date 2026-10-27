@@ -4,7 +4,33 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - {{ shop_name }}</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/style.css" id="login-style-link">
+    <script>
+        (function() {
+            var link = document.getElementById('login-style-link');
+            if (link) {
+                link.addEventListener('error', function() {
+                    var candidates = [
+                        'static/css/style.css',
+                        './static/css/style.css',
+                        '/public/static/css/style.css',
+                        '/css/style.css',
+                        'css/style.css',
+                        '/style.css'
+                    ];
+                    function tryFallback(idx) {
+                        if (idx >= candidates.length) return;
+                        var l = document.createElement('link');
+                        l.rel = 'stylesheet';
+                        l.href = candidates[idx];
+                        l.onerror = function() { tryFallback(idx + 1); };
+                        document.head.appendChild(l);
+                    }
+                    tryFallback(0);
+                });
+            }
+        })();
+    </script>
     <style>
         body {
             background-color: #f1f5f9;

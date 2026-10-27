@@ -3,7 +3,19 @@ import json
 import os
 
 BASE_DIR = Path(__file__).resolve().parent
+
+# Resilient static directory discovery across local and cloud environments (Manus, Vercel, Docker)
 STATIC_DIR = BASE_DIR / "static"
+for _candidate in [
+    BASE_DIR / "static",
+    BASE_DIR.parent / "public" / "static",
+    BASE_DIR.parent / "static",
+    BASE_DIR.parent / "public"
+]:
+    if _candidate.exists() and (_candidate / "css" / "style.css").exists():
+        STATIC_DIR = _candidate
+        break
+
 TEMPLATES_DIR = BASE_DIR / "templates"
 
 # In serverless environments (e.g. Vercel), local filesystem is read-only.

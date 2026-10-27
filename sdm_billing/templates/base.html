@@ -4,7 +4,34 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ page_title | default("Sri Dhanam Motors") }} - Billing & Inventory</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/style.css" id="app-style-link">
+    <script>
+        // Automatic CSS fallback resolver for Manus / Vercel / Subpath deployments
+        (function() {
+            var primaryLink = document.getElementById('app-style-link');
+            if (primaryLink) {
+                primaryLink.addEventListener('error', function() {
+                    var candidates = [
+                        'static/css/style.css',
+                        './static/css/style.css',
+                        '/public/static/css/style.css',
+                        '/css/style.css',
+                        'css/style.css',
+                        '/style.css'
+                    ];
+                    function tryFallback(idx) {
+                        if (idx >= candidates.length) return;
+                        var link = document.createElement('link');
+                        link.rel = 'stylesheet';
+                        link.href = candidates[idx];
+                        link.onerror = function() { tryFallback(idx + 1); };
+                        document.head.appendChild(link);
+                    }
+                    tryFallback(0);
+                });
+            }
+        })();
+    </script>
     <!-- Chart.js CDN for Analytics -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
