@@ -34,7 +34,6 @@ _fastapi_app = app
 
 async def app_handler(scope, receive, send):
     if scope.get("type") == "http":
-        original_scope_path = scope.get("path", "")
         headers = {
             key.decode("latin-1").lower(): value.decode("latin-1")
             for key, value in scope.get("headers", [])
@@ -64,17 +63,6 @@ async def app_handler(scope, receive, send):
                     scope["raw_path"] = adjusted_path.encode("utf-8")
                 break
 
-        downstream_send = send
-
-        async def send_with_debug(message):
-            if message.get("type") == "http.response.start":
-                message = dict(message)
-                message["headers"] = list(message.get("headers", [])) + [
-                    (b"x-debug-asgi-path", f"{original_scope_path}|{path}".encode("utf-8"))
-                ]
-            await downstream_send(message)
-
-        send = send_with_debug
     await _fastapi_app(scope, receive, send)
 
 
