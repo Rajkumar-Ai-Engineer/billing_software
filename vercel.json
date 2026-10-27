@@ -18,11 +18,5 @@
         }
       ]
     }
-  ],
-  "functions": {
-    "main.py": {
-      "includeFiles": "{sdm_billing/**,public/**,static/**}",
-      "maxDuration": 30
-    }
-  }
+  ]
 }
