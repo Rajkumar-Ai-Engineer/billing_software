@@ -34,7 +34,26 @@ _fastapi_app = app
 
 async def app_handler(scope, receive, send):
     if scope.get("type") == "http":
+        headers = {
+            key.decode("latin-1").lower(): value.decode("latin-1")
+            for key, value in scope.get("headers", [])
+        }
         path = scope.get("path", "")
+
+        # Depending on whether the request arrived through a Vercel rewrite or
+        # directly through the Python function, the runtime may expose either
+        # the internal function path or the original public URI.
+        for header_name in (
+            "x-forwarded-uri",
+            "x-vercel-original-url",
+            "x-original-url",
+            "x-invoke-path",
+        ):
+            forwarded_path = headers.get(header_name, "").split("?", 1)[0]
+            if forwarded_path and not forwarded_path.startswith("/api/index"):
+                path = forwarded_path
+                break
+
         for prefix in ("/api/index.py", "/api/index"):
             if path == prefix or path.startswith(prefix + "/"):
                 scope = dict(scope)
