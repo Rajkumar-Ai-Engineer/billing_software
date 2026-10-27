@@ -1,26 +1,14 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "cleanUrls": true,
   "routes": [
     {
-      "src": "/",
+      "src": "/(.*)",
       "dest": "/api/index.py",
       "transforms": [
         {
           "type": "request.path",
           "op": "set",
-          "args": "/"
-        }
-      ]
-    },
-    {
-      "src": "/(?<path>.+)",
-      "dest": "/api/index.py",
-      "transforms": [
-        {
-          "type": "request.path",
-          "op": "set",
-          "args": "/$path"
+          "args": "/$1"
         }
       ]
     }
