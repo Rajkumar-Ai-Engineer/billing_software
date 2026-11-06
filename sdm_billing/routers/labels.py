@@ -42,24 +42,19 @@ def get_label_preview(
     w = width_mm or settings.get("label_width_mm", 50)
     h = height_mm or settings.get("label_height_mm", 30)
 
-    # Generate QR and Barcode data
+    # Generate Barcode data
     qr_b64 = ""
     bc_b64 = ""
 
     if type == "battery":
         s = serial or "SDM0001"
-        qr_text = f"SN:{s}|{battery_type}|{voltage}V|{ah}Ah|{config.SHOP_NAME}"
-        qr_b64 = generate_qr_base64(qr_text, box_size=3)
         bc_b64 = generate_barcode_base64(s)
     elif type == "invoice":
         s = invoice_no or "INV-001"
-        qr_text = f"{config.WEBSITE_URL}?invoice={s}"
-        qr_b64 = generate_qr_base64(qr_text, box_size=3)
         bc_b64 = generate_barcode_base64(s)
     else:  # product
         s = part_no or "SDM-PART"
         bc_b64 = generate_barcode_base64(s)
-        qr_b64 = generate_qr_base64(s, box_size=3)
 
     return templates.TemplateResponse(
         request=request,

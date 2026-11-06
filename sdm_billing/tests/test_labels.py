@@ -23,7 +23,6 @@ def test_tspl_battery_label():
     assert "SDM0025" in cmd
     assert "LFP 48.0V 30.0Ah" in cmd
     assert 'BARCODE 20, 108, "128"' in cmd
-    assert 'QRCODE 260, 20' in cmd
     assert "PRINT 2, 1" in cmd
 
 
@@ -57,7 +56,6 @@ def test_zpl_label():
     assert "^LL240" in cmd  # 30mm * 8 dots
     assert "^FDSDM0010^FS" in cmd
     assert "^BCN,48,Y,N,N" in cmd
-    assert "^BQN,2,4" in cmd
     assert "^PQ3" in cmd
     assert "^XZ" in cmd
 

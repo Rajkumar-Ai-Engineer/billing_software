@@ -44,6 +44,7 @@ def get_next_battery_serial(db: Session) -> str:
     return f"SDM{str(next_num).zfill(4)}"
 
 
+@router.get("/battery-barcode", response_class=HTMLResponse)
 @router.get("/battery-qr", response_class=HTMLResponse)
 def get_battery_page(request: Request, db: Session = Depends(get_db)):
     batteries = db.query(Battery).order_by(Battery.id.desc()).all()
@@ -53,7 +54,7 @@ def get_battery_page(request: Request, db: Session = Depends(get_db)):
         request=request,
         name="battery.html",
         context={
-            "active_page": "battery-qr",
+            "active_page": "battery-barcode",
             "next_serial": next_serial,
             "batteries": [b.to_dict() for b in batteries],
             "shop_name": config.SHOP_NAME
@@ -68,7 +69,7 @@ def list_batteries_api(db: Session = Depends(get_db)):
 
 
 @router.post("/api/batteries/generate")
-def generate_battery_qr(payload: BatteryCreate, db: Session = Depends(get_db)):
+def generate_battery_serial(payload: BatteryCreate, db: Session = Depends(get_db)):
     serial = get_next_battery_serial(db)
 
     # 1. Save Battery record
@@ -104,9 +105,7 @@ def generate_battery_qr(payload: BatteryCreate, db: Session = Depends(get_db)):
     if payload.create_product:
         sync_products_to_excel_files(db)
 
-    # 3. Generate QR & Barcode base64
-    qr_data = f"SN:{serial}|{payload.type}|{payload.voltage}V|{payload.ah}Ah|{config.SHOP_NAME}"
-    qr_b64 = generate_qr_base64(qr_data)
+    # 3. Generate Barcode base64
     bc_b64 = generate_barcode_base64(serial)
 
     return {
@@ -115,7 +114,7 @@ def generate_battery_qr(payload: BatteryCreate, db: Session = Depends(get_db)):
         "type": payload.type,
         "voltage": payload.voltage,
         "ah": payload.ah,
-        "qr_base64": qr_b64,
         "barcode_base64": bc_b64,
+        "qr_base64": "",
         "battery": battery.to_dict()
     }

@@ -11,7 +11,7 @@ from models import Product, Invoice, InvoiceItem, StockMovement
 from schemas import InvoiceCreate
 from services.pricing import calculate_selling_price, calculate_line_item, calculate_totals, format_inr
 from services.invoice_no import generate_invoice_no
-from services.qr import generate_qr_base64
+from services.qr import generate_barcode_base64, generate_qr_base64
 import config
 
 router = APIRouter()
@@ -353,9 +353,8 @@ def print_invoice_view(request: Request, invoice_no: str = "", no: Optional[str]
     subtitle = config.VEHICLE_SUBTITLE if is_vehicle else config.SHOP_TAGLINE
     doc_title = "TAX INVOICE" if "with gst" in invoice.gst_mode.lower() else "ESTIMATE"
 
-    # Generate QR Code carrying invoice verification URL
-    inv_url = f"{config.WEBSITE_URL}?invoice={invoice.invoice_no}"
-    qr_b64 = generate_qr_base64(inv_url, box_size=3)
+    # Generate Barcode carrying invoice number
+    bc_b64 = generate_barcode_base64(invoice.invoice_no)
 
     return templates.TemplateResponse(
         request=request,
@@ -365,7 +364,8 @@ def print_invoice_view(request: Request, invoice_no: str = "", no: Optional[str]
             "items": invoice.items,
             "doc_title": doc_title,
             "brand_subtitle": subtitle,
-            "qr_b64": qr_b64,
+            "barcode_b64": bc_b64,
+            "qr_b64": "",
             "shop_name": config.SHOP_NAME,
             "shop_address": config.SHOP_ADDRESS,
             "shop_phones": config.SHOP_PHONES,
@@ -423,8 +423,7 @@ def print_estimate_view(request: Request, payload: dict = Body(...)):
         "grand_total": float(totals.get("grand_total", 0.0))
     }
 
-    inv_url = f"{config.WEBSITE_URL}?estimate={doc_no}"
-    qr_b64 = generate_qr_base64(inv_url, box_size=3)
+    bc_b64 = generate_barcode_base64(doc_no)
 
     return templates.TemplateResponse(
         request=request,
@@ -434,7 +433,8 @@ def print_estimate_view(request: Request, payload: dict = Body(...)):
             "items": formatted_items,
             "doc_title": "ESTIMATE",
             "brand_subtitle": subtitle,
-            "qr_b64": qr_b64,
+            "barcode_b64": bc_b64,
+            "qr_b64": "",
             "shop_name": config.SHOP_NAME,
             "shop_address": config.SHOP_ADDRESS,
             "shop_phones": config.SHOP_PHONES,

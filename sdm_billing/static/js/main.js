@@ -76,7 +76,7 @@ function renderLabelPreview() {
     if (opt.type === "battery") {
         html += `<div style="font-size: 14px; font-weight: bold;">${opt.serial || "SDM0001"}</div>`;
         html += `<div style="font-size: 10px;">${opt.battery_type || "LFP"} ${opt.voltage || 48}V ${opt.ah || 30}Ah</div>`;
-        html += `<div style="font-size: 9px; color: #64748b; margin-top: 4px;">[QR Code + Code128 Barcode]</div>`;
+        html += `<div style="font-size: 9px; color: #64748b; margin-top: 4px;">[Code128 Barcode]</div>`;
     } else if (opt.type === "invoice") {
         html += `<div style="font-size: 13px; font-weight: bold;">INV: ${opt.invoice_no || "INV-001"}</div>`;
         html += `<div style="font-size: 9px; color: #64748b; margin-top: 4px;">[Invoice Barcode]</div>`;

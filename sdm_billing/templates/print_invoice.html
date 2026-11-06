@@ -77,14 +77,16 @@
             font-size: 11px;
             color: #333;
         }
-        .header-qr {
-            text-align: center;
+        .header-barcode {
+            text-align: right;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
         }
-        .qr-img {
-            max-height: 80px;
-            max-width: 80px;
+        .barcode-header-img {
+            max-height: 55px;
+            max-width: 175px;
             display: block;
-            margin: 0 auto;
         }
         .doc-title-banner {
             text-align: center;
@@ -195,10 +197,9 @@
                 </div>
             </div>
         </div>
-        <div class="header-qr">
-            {% if qr_b64 %}
-            <img src="data:image/png;base64,{{ qr_b64 }}" alt="Invoice QR" class="qr-img">
-            <div style="font-size: 9px; margin-top: 2px;">Verify Bill</div>
+        <div class="header-barcode">
+            {% if barcode_b64 %}
+            <img src="data:image/png;base64,{{ barcode_b64 }}" alt="Invoice Barcode" class="barcode-header-img">
             {% endif %}
         </div>
     </div>

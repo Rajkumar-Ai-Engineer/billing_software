@@ -48,13 +48,11 @@ def build_tspl(label: Dict[str, Any], width_mm: int = 50, height_mm: int = 30, g
         volts = label.get("voltage") if label.get("voltage") is not None else 48.0
         ah = label.get("ah") if label.get("ah") is not None else 30.0
         spec = f"{b_type} {volts}V {ah}Ah"
-        qr_data = f"SN:{serial}|{b_type}|{volts}V|{ah}Ah|{config.SHOP_NAME}"
 
         lines.append(f'TEXT 20, 16, "2", 0, 1, 1, "{config.SHOP_NAME}"')
         lines.append(f'TEXT 20, 42, "3", 0, 1, 1, "{serial}"')
         lines.append(f'TEXT 20, 76, "2", 0, 1, 1, "{spec}"')
-        lines.append(f'BARCODE 20, 108, "128", 50, 1, 0, 2, 2, "{serial}"')
-        lines.append(f'QRCODE 260, 20, L, 4, A, 0, "{qr_data}"')
+        lines.append(f'BARCODE 20, 108, "128", 55, 1, 0, 2, 2, "{serial}"')
 
     elif label_type == "product":
         part_no = _clean_str(label.get("part_no"), "")
@@ -84,7 +82,6 @@ def build_tspl(label: Dict[str, Any], width_mm: int = 50, height_mm: int = 30, g
         lines.append(f'TEXT 20, 16, "3", 0, 1, 1, "{config.SHOP_NAME} - TEST"')
         lines.append(f'TEXT 20, 52, "2", 0, 1, 1, "TVS LP 46 TSPL SUCCESS"')
         lines.append('BARCODE 20, 88, "128", 55, 1, 0, 2, 2, "SDM TEST 1234567"')
-        lines.append(f'QRCODE 270, 20, L, 4, A, 0, "{config.WEBSITE_URL}"')
 
     lines.append(f"PRINT {max(1, int(copies))}, 1\n")
     return "\r\n".join(lines)
@@ -111,13 +108,11 @@ def build_zpl(label: Dict[str, Any], width_mm: int = 50, height_mm: int = 30, co
         volts = label.get("voltage") if label.get("voltage") is not None else 48.0
         ah = label.get("ah") if label.get("ah") is not None else 30.0
         spec = f"{b_type} {volts}V {ah}Ah"
-        qr_data = f"SN:{serial}|{b_type}|{volts}V|{ah}Ah|{config.SHOP_NAME}"
 
         cmds.append(f"^FO20,16^A0N,20,20^FD{config.SHOP_NAME}^FS")
         cmds.append(f"^FO20,40^A0N,28,28^FD{serial}^FS")
         cmds.append(f"^FO20,72^A0N,22,22^FD{spec}^FS")
         cmds.append(f"^FO20,104^BCN,48,Y,N,N^FD{serial}^FS")
-        cmds.append(f"^FO260,20^BQN,2,4^FDQA,{qr_data}^FS")
 
     elif label_type == "product":
         part_no = _clean_str(label.get("part_no"), "")
@@ -147,7 +142,6 @@ def build_zpl(label: Dict[str, Any], width_mm: int = 50, height_mm: int = 30, co
         cmds.append(f"^FO20,16^A0N,24,24^FD{config.SHOP_NAME} - TEST^FS")
         cmds.append("^FO20,48^A0N,20,20^FDTVS LP 46 ZPL SUCCESS^FS")
         cmds.append('^FO20,80^BCN,50,Y,N,N^FDSDM TEST 1234567^FS')
-        cmds.append(f"^FO270,20^BQN,2,4^FDQA,{config.WEBSITE_URL}^FS")
 
     cmds.append(f"^PQ{max(1, int(copies))}")
     cmds.append("^XZ\n")
@@ -176,13 +170,11 @@ def build_epl(label: Dict[str, Any], width_mm: int = 50, height_mm: int = 30, ga
         volts = label.get("voltage") if label.get("voltage") is not None else 48.0
         ah = label.get("ah") if label.get("ah") is not None else 30.0
         spec = f"{b_type} {volts}V {ah}Ah"
-        qr_data = f"SN:{serial}|{b_type}|{volts}V|{ah}Ah|{config.SHOP_NAME}"
 
         cmds.append(f'A20,16,0,2,1,1,N,"{config.SHOP_NAME}"')
         cmds.append(f'A20,40,0,3,1,1,N,"{serial}"')
         cmds.append(f'A20,72,0,2,1,1,N,"{spec}"')
         cmds.append(f'B20,104,0,1,2,2,45,B,"{serial}"')
-        cmds.append(f'b260,20,Q,s4,"{qr_data}"')
 
     elif label_type == "product":
         part_no = _clean_str(label.get("part_no"), "")
@@ -212,7 +204,6 @@ def build_epl(label: Dict[str, Any], width_mm: int = 50, height_mm: int = 30, ga
         cmds.append(f'A20,16,0,3,1,1,N,"{config.SHOP_NAME} - TEST"')
         cmds.append('A20,50,0,2,1,1,N,"TVS LP 46 EPL SUCCESS"')
         cmds.append('B20,85,0,1,2,2,50,B,"SDM TEST 1234567"')
-        cmds.append(f'b260,20,Q,s4,"{config.WEBSITE_URL}"')
 
     cmds.append(f"P{max(1, int(copies))}\n")
     return "\r\n".join(cmds)

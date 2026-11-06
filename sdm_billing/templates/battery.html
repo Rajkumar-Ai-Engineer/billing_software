@@ -4,8 +4,8 @@
 <div class="page-container">
     <div class="page-header-row">
         <div>
-            <h2>🔋 Battery Serial & QR Generator</h2>
-            <p class="bill-subtitle">Auto serial numbering (SDM-style), Code128 Barcode & QR generator for EV battery packs</p>
+            <h2>🔋 Battery Serial & Barcode Generator</h2>
+            <p class="bill-subtitle">Auto serial numbering (SDM-style) & Code128 Barcode generator for EV battery packs</p>
         </div>
         <div>
             <span class="badge">Next Projected Serial: <strong id="next-serial-badge">{{ next_serial }}</strong></span>
@@ -17,7 +17,7 @@
         <!-- Generator Form Card -->
         <div class="card flex-1">
             <div class="card-header">
-                <h3>⚡ Generate Battery Serial & QR</h3>
+                <h3>⚡ Generate Battery Serial & Barcode</h3>
             </div>
             <form id="battery-gen-form" onsubmit="event.preventDefault(); generateBattery();">
                 <div class="form-group">
@@ -48,7 +48,7 @@
                 </div>
 
                 <div class="form-group mt-3">
-                    <button type="submit" class="btn btn-primary btn-block">⚡ Generate QR & Barcode</button>
+                    <button type="submit" class="btn btn-primary btn-block">⚡ Generate Barcode</button>
                 </div>
             </form>
         </div>
@@ -59,18 +59,13 @@
                 <h3>🏷️ Generated Battery Label</h3>
                 <span class="badge-success" id="res-serial-badge">SDM0021</span>
             </div>
-            <div class="battery-label-display">
-                <div class="label-meta-head">
-                    <div class="shop-small">SRI DHANAM MOTORS</div>
-                    <div class="spec-text" id="res-spec-line">LFP 48V 30Ah</div>
+            <div class="battery-label-display" style="border: 1px dashed #94a3b8; border-radius: 6px; padding: 15px; background: #fff; margin-bottom: 12px;">
+                <div class="label-meta-head" style="margin-bottom: 10px;">
+                    <div class="shop-small" style="font-size: 11px; font-weight: bold; color: #15803d; letter-spacing: 0.5px;">SRI DHANAM MOTORS</div>
+                    <div class="spec-text" id="res-spec-line" style="font-size: 13px; font-weight: 600; color: #334155;">LFP 48V 30Ah</div>
                 </div>
-                <div class="codes-display-row">
-                    <div class="qr-col">
-                        <img id="res-qr-img" src="" alt="Battery QR Code" class="qr-display">
-                    </div>
-                    <div class="bc-col">
-                        <img id="res-bc-img" src="" alt="Battery Barcode" class="barcode-display">
-                    </div>
+                <div class="barcode-display-box" style="text-align: center; padding: 10px 0;">
+                    <img id="res-bc-img" src="" alt="Battery Barcode" style="max-width: 100%; height: 65px; object-fit: contain;">
                 </div>
             </div>
             <div class="card-footer-btns">

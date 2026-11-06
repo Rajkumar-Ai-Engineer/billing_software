@@ -1,5 +1,5 @@
 /**
- * Sri Dhanam Motors - Battery Serial & QR Handling
+ * Sri Dhanam Motors - Battery Serial & Barcode Handling
  */
 
 let lastGeneratedBattery = null;
@@ -15,7 +15,7 @@ async function generateBattery() {
         return;
     }
 
-    showToast("Generating Battery Serial & QR Codes...", "info");
+    showToast("Generating Battery Serial & Barcode...", "info");
 
     try {
         const res = await fetch("/api/batteries/generate", {
@@ -37,8 +37,19 @@ async function generateBattery() {
             // Display in Preview Card
             document.getElementById("res-serial-badge").textContent = data.serial;
             document.getElementById("res-spec-line").textContent = `${data.type} ${data.voltage}V ${data.ah}Ah`;
-            document.getElementById("res-qr-img").src = `data:image/png;base64,${data.qr_base64}`;
-            document.getElementById("res-bc-img").src = `data:image/png;base64,${data.barcode_base64}`;
+            const qrImg = document.getElementById("res-qr-img");
+            if (qrImg) {
+                if (data.qr_base64) {
+                    qrImg.src = `data:image/png;base64,${data.qr_base64}`;
+                    qrImg.style.display = "block";
+                } else {
+                    qrImg.style.display = "none";
+                }
+            }
+            const bcImg = document.getElementById("res-bc-img");
+            if (bcImg) {
+                bcImg.src = `data:image/png;base64,${data.barcode_base64}`;
+            }
             document.getElementById("battery-result-card").style.display = "block";
 
             // Update Next Projected Serial badge
@@ -51,7 +62,7 @@ async function generateBattery() {
             showToast("Failed to generate battery serial", "error");
         }
     } catch (e) {
-        showToast("Network error generating QR: " + e.message, "error");
+        showToast("Network error generating barcode: " + e.message, "error");
     }
 }
 

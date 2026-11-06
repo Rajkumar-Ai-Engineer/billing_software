@@ -45,6 +45,10 @@ def test_homepage_and_routes(client):
     assert r.status_code == 200
     assert "Vehicle Bill" in r.text
 
+    r = client.get("/battery-barcode")
+    assert r.status_code == 200
+    assert "Battery Serial" in r.text
+
     r = client.get("/battery-qr")
     assert r.status_code == 200
     assert "Battery Serial" in r.text
@@ -79,7 +83,6 @@ def test_battery_generation_api(client):
     data = r.json()
     assert data["success"] is True
     assert data["serial"].startswith("SDM")
-    assert len(data["qr_base64"]) > 50
     assert len(data["barcode_base64"]) > 50
 
     # Clean up test battery and created product

@@ -94,8 +94,8 @@ st.divider()
 # -------------------- NAVIGATION TABS --------------------
 tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
     "🧾 INVOICE & BILLING", 
-    "🏷️ PRODUCT BARCODE / QR",
-    "🔋 BATTERY SERIAL QR", 
+    "🏷️ PRODUCT BARCODE",
+    "🔋 BATTERY SERIAL BARCODE", 
     "⚙️ PRODUCT & STOCK MASTER", 
     "📊 SALES REPORTS",
     "👷 WORKER ATTENDANCE",
@@ -414,7 +414,7 @@ with tab1:
             st.session_state.dealer_address = ""
 
         def build_print_html(bill_title_text):
-            qr_b64_inv = generate_qr_base64(f"{WEBSITE_URL}?invoice={invoice_no}")
+            bar_b64_inv = generate_barcode_base64(invoice_no)
             current_time_str = datetime.datetime.now().strftime("%I:%M %p")
 
             items_rows = ""
@@ -422,7 +422,7 @@ with tab1:
                 items_rows += f"<tr><td>{idx + 1}</td><td>{item['Part No']}</td><td>{item['Product Name']}</td><td>₹{item['Price (₹)']:,.2f}</td><td>{item['Qty']}</td><td>₹{item['Sub Total (₹)']:,.2f}</td><td>{item['GST %']}</td><td>₹{item['GST Amt (₹)']:,.2f}</td><td>₹{item['Total (₹)']:,.2f}</td></tr>"
             
             logo_html = f'<img src="data:image/png;base64,{logo_base64}" style="max-height: 75px; float: left; margin-right: 15px;">' if logo_base64 else ''
-            qr_html = f'<img src="data:image/png;base64,{qr_b64_inv}" style="max-height: 85px; float: right;">'
+            bar_html = f'<img src="data:image/png;base64,{bar_b64_inv}" style="max-height: 55px; float: right;">' if bar_b64_inv else ''
             
             brand_subtitle = "AUTHORIZED JHEV MOTORS DEALER" if bill_category == "Vehicle Sales" else "SALES, SERVICES & SPARES"
 
@@ -458,7 +458,7 @@ with tab1:
                         </div>
                     </div>
                     <div>
-                        {qr_html}
+                        {bar_html}
                     </div>
                 </div>
 
@@ -549,29 +549,23 @@ with tab1:
         if st.session_state.print_html_content:
             components.html(st.session_state.print_html_content, height=0, width=0)
 
-# -------------------- TAB 2: PRODUCT BARCODE / QR --------------------
+# -------------------- TAB 2: PRODUCT BARCODE --------------------
 with tab2:
-    st.subheader("🏷️ Product Barcode & QR Generator")
+    st.subheader("🏷️ Product Barcode Generator")
     if os.path.exists(PRODUCT_FILE):
         p_df = pd.read_csv(PRODUCT_FILE)
         selected_part = st.selectbox("Select Product to Generate Label", p_df["Part No"].tolist())
         if selected_part:
             row_p = p_df[p_df["Part No"] == selected_part].iloc[0]
             st.write(f"**Product:** {row_p['Product Name']} | **Part No:** {row_p['Part No']} | **Cost:** ₹{row_p.get('Cost Price', 0)}")
-            col_qr, col_bar = st.columns(2)
-            with col_qr:
-                qr_b64 = generate_qr_base64(f"PART:{row_p['Part No']}|NAME:{row_p['Product Name']}")
-                st.markdown(f'<img src="data:image/png;base64,{qr_b64}" width="150">', unsafe_allow_html=True)
-                st.caption("QR Code (Part No & Name)")
-            with col_bar:
-                bar_b64 = generate_barcode_base64(str(row_p['Part No']))
-                st.markdown(f'<img src="data:image/png;base64,{bar_b64}" width="220">', unsafe_allow_html=True)
-                st.caption("Barcode (Code 128)")
+            bar_b64 = generate_barcode_base64(str(row_p['Part No']))
+            st.markdown(f'<img src="data:image/png;base64,{bar_b64}" width="260">', unsafe_allow_html=True)
+            st.caption("Barcode (Code 128)")
 
-# -------------------- TAB 3: BATTERY SERIAL QR --------------------
+# -------------------- TAB 3: BATTERY SERIAL BARCODE --------------------
 with tab3:
-    st.subheader("🔋 Battery Serial & QR Generator")
-    st.info("⚡ For full TVS LP 46 thermal printing and database tracking, also visit the FastAPI app at [http://127.0.0.1:8000/battery-qr](http://127.0.0.1:8000/battery-qr).")
+    st.subheader("🔋 Battery Serial & Barcode Generator")
+    st.info("⚡ For full TVS LP 46 thermal printing and database tracking, also visit the FastAPI app at [http://127.0.0.1:8000/battery-barcode](http://127.0.0.1:8000/battery-barcode).")
     col_bt1, col_bt2, col_bt3 = st.columns(3)
     with col_bt1:
         b_type = st.selectbox("Battery Chemistry", ["LFP (Lithium Iron Phosphate)", "Li-Ion (Lithium-Ion)"])
@@ -581,10 +575,11 @@ with tab3:
         b_ah = st.number_input("Capacity (Ah)", value=30.0, step=5.0)
     
     b_serial = f"SDM-BATT-{int(b_volt)}V{int(b_ah)}AH"
-    if st.button("Generate Battery QR"):
+    if st.button("Generate Battery Barcode"):
         st.write(f"**Serial:** `{b_serial}`")
-        qr_b64 = generate_qr_base64(f"SRI DHANAM MOTORS|SN:{b_serial}|{b_type}|{b_volt}V|{b_ah}Ah")
-        st.markdown(f'<img src="data:image/png;base64,{qr_b64}" width="180">', unsafe_allow_html=True)
+        bar_b64 = generate_barcode_base64(b_serial)
+        st.markdown(f'<img src="data:image/png;base64,{bar_b64}" width="260">', unsafe_allow_html=True)
+        st.caption("Barcode (Code 128)")
 
 # -------------------- TAB 4: PRODUCT & STOCK MASTER --------------------
 with tab4:
@@ -1091,4 +1086,4 @@ with tab8:
             st.info("No inward purchase bills recorded yet. Add your first bulk bill above.")
 
         conn_pur.close()
-
+
