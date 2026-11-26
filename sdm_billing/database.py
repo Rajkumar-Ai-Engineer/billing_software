@@ -35,6 +35,8 @@ if DATABASE_URL and not is_placeholder:
         url_normalized = DATABASE_URL
         if url_normalized.startswith("postgres://"):
             url_normalized = url_normalized.replace("postgres://", "postgresql+psycopg2://", 1)
+        elif url_normalized.startswith("postgresql+psycopg://"):
+            url_normalized = url_normalized.replace("postgresql+psycopg://", "postgresql+psycopg2://", 1)
         elif url_normalized.startswith("postgresql://"):
             # SQLAlchemy 2.x defaults postgresql:// to psycopg (v3), while
             # this deployment installs psycopg2-binary.
