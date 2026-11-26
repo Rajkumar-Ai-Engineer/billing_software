@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
+from sqlalchemy.pool import NullPool
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 # Ensure environment variables are loaded and paths are in sys.path
@@ -41,14 +42,17 @@ if DATABASE_URL and not is_placeholder:
             # SQLAlchemy 2.x defaults postgresql:// to psycopg (v3), while
             # this deployment installs psycopg2-binary.
             url_normalized = url_normalized.replace("postgresql://", "postgresql+psycopg2://", 1)
-        engine = create_engine(
-            url_normalized,
-            pool_pre_ping=True,
-            pool_recycle=300,
-            pool_size=5,
-            max_overflow=10,
-            connect_args={"connect_timeout": 30, "sslmode": "require"}
-        )
+        engine_options = {
+            "pool_pre_ping": True,
+            "connect_args": {"connect_timeout": 30, "sslmode": "require"},
+        }
+        if IS_VERCEL:
+            # A Vercel function may be frozen and resumed on a different
+            # request. Do not retain PostgreSQL connections across invocations.
+            engine_options["poolclass"] = NullPool
+        else:
+            engine_options.update(pool_recycle=300, pool_size=5, max_overflow=10)
+        engine = create_engine(url_normalized, **engine_options)
         # Test connection
         with engine.connect() as test_conn:
             pass
