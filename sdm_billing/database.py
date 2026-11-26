@@ -2,7 +2,7 @@ import os
 import sys
 from pathlib import Path
 from dotenv import load_dotenv
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.pool import NullPool
 from sqlalchemy.orm import declarative_base, sessionmaker
 
@@ -94,6 +94,16 @@ def get_db():
 
 def init_db():
     import models  # Ensure all models are registered
+
+    if IS_VERCEL:
+        # Supabase schema migrations are applied out-of-band. Running
+        # create_all/ALTER TABLE from every concurrent serverless cold start
+        # causes races and unnecessary PostgreSQL connections.
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        print("[Database] Verified Supabase PostgreSQL connectivity; runtime DDL skipped.")
+        return
+
     Base.metadata.create_all(bind=engine)
     
     # Ensure all tables have updated_at column across both PostgreSQL and SQLite
