@@ -17,9 +17,9 @@ for env_path in [ROOT_DIR / ".env.local", ROOT_DIR / ".env", SDM_DIR / ".env.loc
         load_dotenv(dotenv_path=env_path, override=False)
 
 try:
-    from config import DB_PATH
+    from config import DB_PATH, IS_VERCEL
 except ImportError:
-    from sdm_billing.config import DB_PATH
+    from sdm_billing.config import DB_PATH, IS_VERCEL
 
 DATABASE_URL = os.getenv("DATABASE_URL") or os.getenv("SUPABASE_DB_URL") or os.getenv("POSTGRES_URL")
 if os.getenv("TESTING") == "1":
@@ -34,7 +34,11 @@ if DATABASE_URL and not is_placeholder:
     try:
         url_normalized = DATABASE_URL
         if url_normalized.startswith("postgres://"):
-            url_normalized = url_normalized.replace("postgres://", "postgresql://", 1)
+            url_normalized = url_normalized.replace("postgres://", "postgresql+psycopg2://", 1)
+        elif url_normalized.startswith("postgresql://"):
+            # SQLAlchemy 2.x defaults postgresql:// to psycopg (v3), while
+            # this deployment installs psycopg2-binary.
+            url_normalized = url_normalized.replace("postgresql://", "postgresql+psycopg2://", 1)
         engine = create_engine(
             url_normalized,
             pool_pre_ping=True,
@@ -48,10 +52,20 @@ if DATABASE_URL and not is_placeholder:
             pass
         print("[Database] Connected successfully to Supabase PostgreSQL database.")
     except Exception as e:
+        if IS_VERCEL and os.getenv("ALLOW_SQLITE_FALLBACK", "false").lower() not in ("1", "true", "yes"):
+            raise RuntimeError(
+                "Production database connection failed; refusing to use ephemeral SQLite on Vercel. "
+                "Verify DATABASE_URL is a valid Supabase PostgreSQL URL and that its password is URL-encoded."
+            ) from e
         print(f"[Database] Warning connecting to PostgreSQL ({e}). Falling back to local SQLite.")
         engine = None
 
 if engine is None:
+    if IS_VERCEL and os.getenv("ALLOW_SQLITE_FALLBACK", "false").lower() not in ("1", "true", "yes"):
+        raise RuntimeError(
+            "DATABASE_URL is missing in Vercel production; refusing to use ephemeral SQLite. "
+            "Configure the Supabase PostgreSQL connection string before serving the application."
+        )
     SQLALCHEMY_DATABASE_URL = f"sqlite:///{DB_PATH}"
     engine = create_engine(
         SQLALCHEMY_DATABASE_URL,
