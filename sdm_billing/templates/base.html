@@ -34,6 +34,57 @@
     </script>
     <!-- Chart.js CDN for Analytics -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Supabase JS Client v2 -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Authentication Session Verification on Every Open & Refresh -->
+    <script>
+        (async function verifyAuthSession() {
+            try {
+                const res = await fetch("/api/auth/session", { credentials: "same-origin" });
+                if (res.status === 401 || !res.ok) {
+                    window.location.replace("/login?next=" + encodeURIComponent(window.location.pathname));
+                    return;
+                }
+                const data = await res.json();
+                if (!data.authenticated) {
+                    window.location.replace("/login?next=" + encodeURIComponent(window.location.pathname));
+                }
+            } catch (err) {
+                // If offline or during page unload, ignore
+            }
+        })();
+
+        async function handleSignOut(e) {
+            if (e) e.preventDefault();
+            try {
+                // 1. Clear Supabase JS client session in browser
+                if (window.supabase) {
+                    try {
+                        const sbKeys = Object.keys(localStorage).filter(k => k.startsWith('sb-') || k.includes('supabase'));
+                        for (const k of sbKeys) {
+                            localStorage.removeItem(k);
+                        }
+                    } catch (err) {}
+                }
+                sessionStorage.clear();
+                
+                // 2. Clear client-side cookie references
+                document.cookie = "sb_access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+                document.cookie = "sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+                document.cookie = "sdm_auth_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+
+                // 3. Inform server to revoke session and delete HTTP-only cookies
+                await fetch("/api/auth/logout", {
+                    method: "POST",
+                    credentials: "same-origin"
+                });
+            } catch (err) {
+                console.warn("Logout error:", err);
+            }
+            // 4. Redirect with explicit logged_out flag so login page doesn't auto-login
+            window.location.replace("/login?logged_out=1");
+        }
+    </script>
 </head>
 <body>
     <!-- Top Header -->
@@ -60,7 +111,7 @@
 
     <!-- Navigation Bar -->
     <nav class="app-nav">
-        <div class="nav-container">
+        <div class="nav-container" style="display: flex; flex-wrap: wrap; align-items: center;">
             <a href="/" class="nav-btn {% if active_page == 'dashboard' %}active{% endif %}">📊 Dashboard</a>
             <a href="/spare-bill" class="nav-btn {% if active_page == 'spare-bill' %}active{% endif %}">🧾 Spare Bill</a>
             <a href="/service-bill" class="nav-btn {% if active_page == 'service-bill' %}active{% endif %}">🔧 Service Bill</a>
@@ -71,6 +122,8 @@
             <a href="/purchases" class="nav-btn {% if active_page == 'purchases' %}active{% endif %}">📥 Inward Purchases</a>
             <a href="/attendance" class="nav-btn {% if active_page == 'attendance' %}active{% endif %}">👷 Attendance & Salary</a>
             <a href="/printer-settings" class="nav-btn {% if active_page == 'printer-settings' %}active{% endif %}">🏷️ Printer Settings</a>
+            <!-- Sign Out Button -->
+            <a href="/logout" onclick="handleSignOut(event)" class="nav-btn" style="margin-left: auto; background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; font-weight: 600;" title="Sign out of billing portal">🚪 Sign Out</a>
         </div>
     </nav>
 

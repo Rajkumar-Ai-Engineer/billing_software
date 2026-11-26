@@ -35,6 +35,13 @@ if "%APP_DIR%"=="" (
     exit /b 1
 )
 
+:: Ensure VIRTUAL_ENV matches project root to prevent uv/virtualenv mismatch warnings
+if exist "%ROOT_DIR%\.venv" (
+    set "VIRTUAL_ENV=%ROOT_DIR%\.venv"
+) else (
+    set "VIRTUAL_ENV="
+)
+
 :: 2. Locate Python executable
 set "PYTHON_EXE="
 if exist "%ROOT_DIR%\.venv\Scripts\python.exe" (

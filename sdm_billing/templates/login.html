@@ -3,76 +3,1290 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - {{ shop_name }}</title>
+    <title>Secure Login - {{ shop_name }}</title>
     <link rel="stylesheet" href="/static/css/style.css" id="login-style-link">
-    <script>
-        (function() {
-            var link = document.getElementById('login-style-link');
-            if (link) {
-                link.addEventListener('error', function() {
-                    var candidates = [
-                        'static/css/style.css',
-                        './static/css/style.css',
-                        '/public/static/css/style.css',
-                        '/css/style.css',
-                        'css/style.css',
-                        '/style.css'
-                    ];
-                    function tryFallback(idx) {
-                        if (idx >= candidates.length) return;
-                        var l = document.createElement('link');
-                        l.rel = 'stylesheet';
-                        l.href = candidates[idx];
-                        l.onerror = function() { tryFallback(idx + 1); };
-                        document.head.appendChild(l);
-                    }
-                    tryFallback(0);
-                });
-            }
-        })();
-    </script>
+    <!-- Supabase JS Client v2 -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
+        :root {
+            --sdm-green: #2E7D32;
+            --sdm-green-hover: #1b5e20;
+            --sdm-navy: #1A365D;
+            --sdm-blue: #2B6CB0;
+            --sdm-slate: #0f172a;
+            --sdm-gray-bg: #f8fafc;
+            --sdm-card-border: #e2e8f0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
         body {
-            background-color: #f1f5f9;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 40%, #1A365D 100%);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             display: flex;
             align-items: center;
             justify-content: center;
             min-height: 100vh;
+            padding: 24px 16px;
+            color: #334155;
         }
-        .login-card {
-            background: #fff;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+
+        .login-wrapper {
             width: 100%;
-            max-width: 400px;
-            text-align: center;
+            max-width: 460px;
+            animation: fadeIn 0.35s ease-out;
         }
-        .login-logo {
-            max-height: 70px;
-            margin-bottom: 15px;
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .login-card {
+            background: #ffffff;
+            border-radius: 18px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .card-accent-bar {
+            height: 6px;
+            background: linear-gradient(90deg, #2E7D32 0%, #4caf50 50%, #1A365D 100%);
+        }
+
+        .card-body {
+            padding: 32px 28px 26px 28px;
+        }
+
+        .brand-header {
+            text-align: center;
+            margin-bottom: 22px;
+        }
+
+        .brand-logo {
+            max-height: 68px;
+            max-width: 210px;
+            object-fit: contain;
+            margin-bottom: 10px;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.06));
+        }
+
+        .brand-title {
+            color: var(--sdm-navy);
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            margin-bottom: 3px;
+        }
+
+        .brand-tagline {
+            color: var(--sdm-green);
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        .brand-dealer {
+            display: inline-block;
+            background: #f1f5f9;
+            color: #475569;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 20px;
+            border: 1px solid #e2e8f0;
+        }
+
+        /* Alert Banners */
+        .alert-box {
+            display: none;
+            padding: 12px 14px;
+            border-radius: 10px;
+            font-size: 13px;
+            line-height: 1.45;
+            margin-bottom: 18px;
+        }
+
+        .alert-error {
+            background-color: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+        }
+
+        .alert-info {
+            background-color: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #166534;
+        }
+
+        .alert-warning {
+            background-color: #fffbeb;
+            border: 1px solid #fde68a;
+            color: #92400e;
+        }
+
+        /* Authorized Email Chips/Pills */
+        .account-chips-container {
+            margin-bottom: 20px;
+        }
+
+        .chips-label {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 11.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: #64748b;
+            margin-bottom: 8px;
+        }
+
+        .chips-list {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+        }
+
+        .account-chip {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-align: left;
+            width: 100%;
+        }
+
+        .account-chip:hover {
+            background: #f0fdf4;
+            border-color: #86efac;
+            transform: translateX(2px);
+        }
+
+        .account-chip.active {
+            background: #f0fdf4;
+            border-color: var(--sdm-green);
+            box-shadow: 0 0 0 1.5px rgba(46, 125, 50, 0.2);
+        }
+
+        .chip-email {
+            font-size: 12.5px;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .chip-action {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--sdm-green);
+            background: #ffffff;
+            border: 1px solid #bbf7d0;
+            padding: 2px 8px;
+            border-radius: 12px;
+        }
+
+        /* Google Sign-In Button */
+        .btn-google {
+            width: 100%;
+            background-color: #ffffff;
+            color: #1e293b;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 10px;
+            padding: 11px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            margin-bottom: 18px;
+        }
+
+        .btn-google:hover:not(:disabled) {
+            background-color: #f8fafc;
+            border-color: #94a3b8;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08);
+            transform: translateY(-1px);
+        }
+
+        .btn-google:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .google-icon {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+        }
+
+        /* Divider */
+        .divider {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            margin: 18px 0;
+            color: #94a3b8;
+            font-size: 11.5px;
+            font-weight: 700;
+            letter-spacing: 0.7px;
+            text-transform: uppercase;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .divider span {
+            padding: 0 10px;
+        }
+
+        /* Form elements */
+        .form-group {
+            margin-bottom: 16px;
+            text-align: left;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #334155;
+            margin-bottom: 6px;
+        }
+
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 12px;
+            color: #94a3b8;
+            pointer-events: none;
+            width: 18px;
+            height: 18px;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 11px 12px 11px 40px;
+            font-size: 14px;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 9px;
+            background-color: #fff;
+            color: #1e293b;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+
+        .input-field:focus {
+            border-color: var(--sdm-green);
+            box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.15);
+        }
+
+        .toggle-password-btn {
+            position: absolute;
+            right: 12px;
+            background: none;
+            border: none;
+            color: #64748b;
+            cursor: pointer;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.2s;
+        }
+
+        .toggle-password-btn:hover {
+            color: #1e293b;
+        }
+
+        .form-actions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            font-size: 13px;
+        }
+
+        .remember-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            color: #64748b;
+            user-select: none;
+        }
+
+        .remember-checkbox input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--sdm-green);
+            cursor: pointer;
+        }
+
+        .btn-submit {
+            width: 100%;
+            background-color: var(--sdm-green);
+            color: #ffffff;
+            border: none;
+            border-radius: 10px;
+            padding: 13px 20px;
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 6px -1px rgba(46, 125, 50, 0.25);
+        }
+
+        .btn-submit:hover:not(:disabled) {
+            background-color: var(--sdm-green-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 10px -1px rgba(46, 125, 50, 0.35);
+        }
+
+        .btn-submit:disabled {
+            opacity: 0.75;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .spinner {
+            display: none;
+            width: 18px;
+            height: 18px;
+            border: 2.5px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #ffffff;
+            border-radius: 50%;
+            animation: spin 0.75s linear infinite;
+        }
+
+        .spinner-dark {
+            border-color: rgba(0, 0, 0, 0.15);
+            border-top-color: #1e293b;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .card-footer {
+            background-color: #f8fafc;
+            border-top: 1px solid #f1f5f9;
+            padding: 16px 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        .security-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 600;
+            color: #475569;
+        }
+
+        .security-badge svg {
+            width: 14px;
+            height: 14px;
+            fill: #16a34a;
+        }
+
+        .auth-whitelist-note {
+            margin-top: 6px;
+            font-size: 11px;
+            color: #94a3b8;
+            line-height: 1.4;
+        }
+
+        @media (max-width: 480px) {
+            .card-body {
+                padding: 22px 18px;
+            }
+            .brand-title {
+                font-size: 20px;
+            }
+        }
+
+        /* Google Setup Guidance Modal & Link */
+        .google-help-link {
+            text-align: center;
+            margin-top: -10px;
+            margin-bottom: 16px;
+        }
+
+        .google-help-link a {
+            font-size: 11.5px;
+            color: #64748b;
+            text-decoration: none;
+            border-bottom: 1px dashed #cbd5e1;
+            padding-bottom: 1px;
+            transition: color 0.15s;
+        }
+
+        .google-help-link a:hover {
+            color: var(--sdm-green);
+            border-bottom-color: var(--sdm-green);
+        }
+
+        .modal-backdrop {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(4px);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+
+        .modal-backdrop.show {
+            display: flex;
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        .modal-card {
+            background: #ffffff;
+            width: 100%;
+            max-width: 530px;
+            border-radius: 14px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            animation: slideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(18px) scale(0.97); opacity: 0; }
+            to { transform: translateY(0) scale(1); opacity: 1; }
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .modal-title-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .modal-title-wrapper h3 {
+            margin: 0;
+            font-size: 15.5px;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        .modal-close-btn {
+            background: transparent;
+            border: none;
+            font-size: 24px;
+            line-height: 1;
+            color: #64748b;
+            cursor: pointer;
+            padding: 2px 6px;
+            border-radius: 6px;
+            transition: all 0.15s ease;
+        }
+
+        .modal-close-btn:hover {
+            background: #e2e8f0;
+            color: #0f172a;
+        }
+
+        .modal-body {
+            padding: 20px;
+            color: #334155;
+            font-size: 13px;
+            line-height: 1.5;
+            max-height: 72vh;
+            overflow-y: auto;
+            text-align: left;
+        }
+
+        .modal-error-badge {
+            display: inline-block;
+            background: #fee2e2;
+            color: #991b1b;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid #fecaca;
+            margin-bottom: 12px;
+            word-break: break-all;
+        }
+
+        .modal-desc {
+            margin: 0 0 14px 0;
+            color: #475569;
+        }
+
+        .modal-steps-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 12px 16px;
+            margin-bottom: 14px;
+        }
+
+        .modal-steps-box h4 {
+            margin: 0 0 8px 0;
+            font-size: 12px;
+            font-weight: 700;
+            color: #0f172a;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .modal-steps-box ol {
+            margin: 0;
+            padding-left: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            font-size: 12.5px;
+        }
+
+        .modal-steps-box li strong {
+            color: #0f172a;
+        }
+
+        .code-pill {
+            display: block;
+            background: #0f172a;
+            color: #38bdf8;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 11.5px;
+            padding: 7px 10px;
+            border-radius: 6px;
+            margin-top: 5px;
+            word-break: break-all;
+            user-select: all;
+        }
+
+        .modal-ready-box {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 10px;
+            padding: 12px 14px;
+            font-size: 12.5px;
+            color: #166534;
+        }
+
+        .modal-ready-box strong {
+            color: #14532d;
+        }
+
+        .modal-footer {
+            padding: 12px 20px;
+            background: #f8fafc;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .btn-modal-open-supabase {
+            background: #0f172a;
+            color: #ffffff;
+            font-size: 12.5px;
+            font-weight: 600;
+            padding: 8px 14px;
+            border-radius: 8px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.15s ease;
+        }
+
+        .btn-modal-open-supabase:hover {
+            background: #334155;
+            color: #ffffff;
+        }
+
+        .btn-modal-use-pwd {
+            background: var(--sdm-green);
+            color: #ffffff;
+            font-size: 12.5px;
+            font-weight: 700;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .btn-modal-use-pwd:hover {
+            background: var(--sdm-green-hover);
         }
     </style>
 </head>
 <body>
+
+<div class="login-wrapper">
     <div class="login-card">
-        <img src="/static/img/logo.png" alt="Logo" class="login-logo" onerror="this.style.display='none'">
-        <h2 style="color: #2E7D32; margin-bottom: 5px;">{{ shop_name }}</h2>
-        <p style="color: #64748b; font-size: 14px; margin-top: 0; margin-bottom: 20px;">Staff Portal Authentication</p>
-
-        {% if error %}
-        <div style="background: #fee2e2; color: #b91c1c; padding: 10px; border-radius: 4px; margin-bottom: 15px; font-size: 13px;">
-            {{ error }}
-        </div>
-        {% endif %}
-
-        <form action="/login" method="POST">
-            <div class="form-group" style="text-align: left; margin-bottom: 20px;">
-                <label for="password">Enter Staff Access Password</label>
-                <input type="password" id="password" name="password" class="input-ctrl" required placeholder="••••••••">
+        <div class="card-accent-bar"></div>
+        <div class="card-body">
+            <!-- Brand Header -->
+            <div class="brand-header">
+                <img src="/static/img/logo.png" alt="{{ shop_name }}" class="brand-logo" onerror="this.style.display='none'">
+                <h1 class="brand-title">{{ shop_name }}</h1>
+                <div class="brand-tagline">Sales, Services & Spares</div>
+                <div class="brand-dealer">Authorized JHEV Motors Dealer</div>
             </div>
-            <button type="submit" class="btn btn-primary btn-block">Sign In</button>
-        </form>
+
+            <!-- Error Banner -->
+            <div id="error-alert" class="alert-box alert-error" role="alert">
+                <span id="error-alert-msg"></span>
+            </div>
+
+            <!-- Success / Logged Out Notice -->
+            <div id="info-alert" class="alert-box alert-info" role="status">
+                <span id="info-alert-msg"></span>
+            </div>
+
+            <!-- Server Rendered Error (if any) -->
+            {% if error %}
+            <div class="alert-box alert-error" style="display: block;">
+                {{ error }}
+            </div>
+            {% endif %}
+
+            <!-- Configuration Notice (if Supabase credentials need to be set) -->
+            {% if not supabase_configured %}
+            <div id="config-notice" class="alert-box alert-warning" style="display: block;">
+                <strong>Supabase Notice:</strong> Running in offline local fallback mode.
+            </div>
+            {% endif %}
+
+            <!-- SECTION 1: Sign In with Google -->
+            <button type="button" id="google-btn" class="btn-google" onclick="handleGoogleSignIn()">
+                <svg class="google-icon" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/>
+                    <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.36 24 12 24z"/>
+                    <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.98 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/>
+                    <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.36 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+                </svg>
+                <span id="google-btn-text">Sign In with Google</span>
+                <div id="google-spinner" class="spinner spinner-dark" style="display: none;"></div>
+            </button>
+            <div class="google-help-link">
+                <a href="javascript:void(0)" onclick="openGoogleModal()">Need help configuring Google Sign-In?</a>
+            </div>
+
+            <!-- Divider -->
+            <div class="divider">
+                <span>or sign in with email & password</span>
+            </div>
+
+            <!-- SECTION 2: Authorized Account Selectors (Click fills email only) -->
+            <div class="account-chips-container">
+                <div class="chips-label">
+                    <span>Authorized Admin Emails</span>
+                    <span style="font-size: 10px; color: #94a3b8;">Click to select email</span>
+                </div>
+                <div class="chips-list">
+                    <button type="button" class="account-chip" onclick="selectEmail('sdmortrs@gmail.com')">
+                        <span class="chip-email">sdmortrs@gmail.com</span>
+                        <span class="chip-action">Use Email</span>
+                    </button>
+                    <button type="button" class="account-chip" onclick="selectEmail('muthukumaransuthagar48@gmail.com')">
+                        <span class="chip-email">muthukumaransuthagar48@gmail.com</span>
+                        <span class="chip-action">Use Email</span>
+                    </button>
+                    <button type="button" class="account-chip" onclick="selectEmail('tech84602@gmail.com')">
+                        <span class="chip-email">tech84602@gmail.com</span>
+                        <span class="chip-action">Use Email</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- SECTION 3: Standard Email & Password Authentication Form -->
+            <form id="login-form" onsubmit="handleLoginSubmit(event)" novalidate>
+                <!-- Hidden next URL redirect -->
+                <input type="hidden" id="next-url" value="{{ next_url | default('/') }}">
+
+                <!-- Email Input -->
+                <div class="form-group">
+                    <label for="email" class="form-label">Email Address</label>
+                    <div class="input-wrapper">
+                        <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                            <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path>
+                        </svg>
+                        <input 
+                            type="email" 
+                            id="email" 
+                            name="email" 
+                            class="input-field" 
+                            placeholder="Enter authorized email address" 
+                            required 
+                            autocomplete="email"
+                            autofocus
+                        >
+                    </div>
+                </div>
+
+                <!-- Password Input -->
+                <div class="form-group">
+                    <label for="password" class="form-label">Password</label>
+                    <div class="input-wrapper">
+                        <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                        <input 
+                            type="password" 
+                            id="password" 
+                            name="password" 
+                            class="input-field" 
+                            placeholder="Enter your password" 
+                            required 
+                            autocomplete="current-password"
+                        >
+                        <button 
+                            type="button" 
+                            id="toggle-password-btn" 
+                            class="toggle-password-btn" 
+                            onclick="togglePasswordVisibility()" 
+                            aria-label="Toggle password visibility"
+                        >
+                            <svg id="eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                            <svg id="eye-slash-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                <line x1="1" y1="1" x2="23" y2="23"></line>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Remember Me -->
+                <div class="form-actions">
+                    <label class="remember-checkbox">
+                        <input type="checkbox" id="remember-me" checked>
+                        <span>Stay signed in</span>
+                    </label>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" id="submit-btn" class="btn-submit">
+                    <div id="btn-spinner" class="spinner"></div>
+                    <span id="btn-text">Validate & Sign In</span>
+                </button>
+            </form>
+        </div>
+
+        <!-- Footer -->
+        <div class="card-footer">
+            <div class="security-badge">
+                <svg viewBox="0 0 24 24">
+                    <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/>
+                </svg>
+                <span>End-to-End Secure Supabase Authentication</span>
+            </div>
+            <div class="auth-whitelist-note">
+                Access restricted strictly to 3 authorized emails:<br>
+                <strong>sdmortrs@gmail.com</strong> &bull; 
+                <strong>muthukumaransuthagar48@gmail.com</strong> &bull; 
+                <strong>tech84602@gmail.com</strong>
+            </div>
+        </div>
     </div>
+</div>
+
+<!-- Google Provider Setup Guidance Modal -->
+<div id="google-modal" class="modal-backdrop" onclick="if(event.target===this)closeGoogleModal()">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div class="modal-header">
+            <div class="modal-title-wrapper">
+                <svg class="google-icon" viewBox="0 0 24 24" width="20" height="20">
+                    <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/>
+                    <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.36 24 12 24z"/>
+                    <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.98 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/>
+                    <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.36 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+                </svg>
+                <h3 id="modal-title">Google Sign-In Setup Required</h3>
+            </div>
+            <button type="button" class="modal-close-btn" onclick="closeGoogleModal()" aria-label="Close dialog">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-error-badge">
+                Error 400: Unsupported provider: provider is not enabled
+            </div>
+            <p class="modal-desc">
+                Google OAuth is currently <strong>disabled</strong> in your Supabase project (<code>nalrgmdtxxjfbowbtuho</code>).
+                To enable <strong>Sign In with Google</strong>, connect your Google Cloud OAuth credentials:
+            </p>
+            <div class="modal-steps-box">
+                <h4>Quick 4-Step Setup:</h4>
+                <ol>
+                    <li>
+                        Open your 
+                        <a href="https://supabase.com/dashboard/project/nalrgmdtxxjfbowbtuho/auth/providers" target="_blank" rel="noopener" style="color: var(--sdm-green); font-weight: 700; text-decoration: underline;">
+                            Supabase Auth Providers Dashboard &nearr;
+                        </a>
+                    </li>
+                    <li>Expand <strong>Google</strong> and toggle <strong>Enable Google provider</strong> to <strong>ON</strong>.</li>
+                    <li>Paste your Google Cloud <strong>Client ID</strong> and <strong>Client Secret</strong>.</li>
+                    <li>
+                        In Google Cloud Console, add this Authorized Redirect URI:
+                        <span class="code-pill">https://nalrgmdtxxjfbowbtuho.supabase.co/auth/v1/callback</span>
+                    </li>
+                </ol>
+            </div>
+            <div class="modal-ready-box">
+                <strong>Instant Direct Login is Ready:</strong><br>
+                All 3 authorized administrator emails (<code>sdmortrs@gmail.com</code>, <code>muthukumaransuthagar48@gmail.com</code>, <code>tech84602@gmail.com</code>) can log in immediately using Password: <strong>dhanam@#123</strong>.
+            </div>
+        </div>
+        <div class="modal-footer">
+            <a href="https://supabase.com/dashboard/project/nalrgmdtxxjfbowbtuho/auth/providers" target="_blank" rel="noopener" class="btn-modal-open-supabase">
+                <span>Open Supabase Providers &nearr;</span>
+            </a>
+            <button type="button" class="btn-modal-use-pwd" onclick="closeGoogleModalAndFocus()">
+                Use Email & Password
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Supabase Configuration injected from server
+    const SUPABASE_URL = "{{ supabase_url }}";
+    const SUPABASE_ANON_KEY = "{{ supabase_anon_key }}";
+    const IS_CONFIGURED = {{ "true" if supabase_configured else "false" }};
+    const AUTHORIZED_EMAILS = [
+        "sdmortrs@gmail.com",
+        "muthukumaransuthagar48@gmail.com",
+        "tech84602@gmail.com"
+    ];
+
+    let supabaseClient = null;
+    if (IS_CONFIGURED && window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY) {
+        try {
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        } catch (e) {
+            console.warn("Could not initialize browser Supabase client:", e);
+        }
+    }
+
+    // Check if the user just signed out explicitly
+    const urlParams = new URLSearchParams(window.location.search);
+    const isLoggedOut = urlParams.get("logged_out") === "1";
+
+    if (isLoggedOut) {
+        // Clear all cached tokens from browser storage
+        try {
+            if (supabaseClient) {
+                supabaseClient.auth.signOut().catch(() => {});
+            }
+            for (let i = localStorage.length - 1; i >= 0; i--) {
+                const k = localStorage.key(i);
+                if (k && (k.startsWith("sb-") || k.includes("supabase") || k.includes("auth"))) {
+                    localStorage.removeItem(k);
+                }
+            }
+            sessionStorage.clear();
+        } catch (e) {}
+
+        // Show signed out notification banner
+        const infoEl = document.getElementById("info-alert");
+        const infoMsgEl = document.getElementById("info-alert-msg");
+        if (infoEl && infoMsgEl) {
+            infoMsgEl.textContent = "You have been successfully signed out.";
+            infoEl.style.display = "block";
+        }
+    }
+
+    // Helper: Clicking an authorized email chip sets ONLY the email field and focuses password
+    function selectEmail(email) {
+        clearError();
+        const emailInput = document.getElementById("email");
+        const pwdInput = document.getElementById("password");
+        emailInput.value = email;
+        pwdInput.focus();
+
+        // Highlight chip
+        document.querySelectorAll(".account-chip").forEach(el => el.classList.remove("active"));
+        event.currentTarget.classList.add("active");
+    }
+
+    // Toggle password visibility
+    function togglePasswordVisibility() {
+        const pwdInput = document.getElementById("password");
+        const eyeIcon = document.getElementById("eye-icon");
+        const eyeSlashIcon = document.getElementById("eye-slash-icon");
+
+        if (pwdInput.type === "password") {
+            pwdInput.type = "text";
+            eyeIcon.style.display = "none";
+            eyeSlashIcon.style.display = "block";
+        } else {
+            pwdInput.type = "password";
+            eyeIcon.style.display = "block";
+            eyeSlashIcon.style.display = "none";
+        }
+    }
+
+    // Show / Clear error message
+    function showError(msg) {
+        const alertEl = document.getElementById("error-alert");
+        const msgEl = document.getElementById("error-alert-msg");
+        msgEl.textContent = msg;
+        alertEl.style.display = "block";
+        alertEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+
+    function clearError() {
+        const alertEl = document.getElementById("error-alert");
+        alertEl.style.display = "none";
+    }
+
+    // Set submit button loading state
+    function setLoading(isLoading) {
+        const btn = document.getElementById("submit-btn");
+        const spinner = document.getElementById("btn-spinner");
+        const btnText = document.getElementById("btn-text");
+
+        if (isLoading) {
+            btn.disabled = true;
+            spinner.style.display = "inline-block";
+            btnText.textContent = "Validating Credentials...";
+        } else {
+            btn.disabled = false;
+            spinner.style.display = "none";
+            btnText.textContent = "Validate & Sign In";
+        }
+    }
+
+    // Sync session token cookie with server
+    async function syncSessionCookie(token) {
+        try {
+            const res = await fetch("/api/auth/session", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ access_token: token }),
+                credentials: "same-origin"
+            });
+            return res;
+        } catch (e) {
+            console.warn("Failed to sync session cookie:", e);
+            return { ok: false };
+        }
+    }
+
+    // Modal helpers for Google Provider Setup
+    function openGoogleModal() {
+        const modal = document.getElementById("google-modal");
+        if (modal) {
+            modal.classList.add("show");
+        }
+    }
+
+    function closeGoogleModal() {
+        const modal = document.getElementById("google-modal");
+        if (modal) {
+            modal.classList.remove("show");
+        }
+    }
+
+    function closeGoogleModalAndFocus() {
+        closeGoogleModal();
+        const pwdInput = document.getElementById("password");
+        if (pwdInput) {
+            pwdInput.focus();
+        }
+    }
+
+    // Cache and verify Google OAuth provider status from backend/Supabase
+    let googleStatusChecked = false;
+    let googleAuthEnabled = false;
+
+    async function checkGoogleStatus() {
+        if (googleStatusChecked) {
+            return googleAuthEnabled;
+        }
+        try {
+            const res = await fetch("/api/auth/google-status");
+            if (res.ok) {
+                const data = await res.json();
+                googleAuthEnabled = Boolean(data.enabled);
+                googleStatusChecked = true;
+                return googleAuthEnabled;
+            }
+        } catch (e) {
+            console.warn("Could not check google status via API, checking directly:", e);
+        }
+        // Direct fallback to Supabase settings endpoint
+        if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+            try {
+                const directRes = await fetch(SUPABASE_URL + "/auth/v1/settings", {
+                    headers: { "apikey": SUPABASE_ANON_KEY }
+                });
+                if (directRes.ok) {
+                    const settings = await directRes.json();
+                    googleAuthEnabled = Boolean(settings?.external?.google);
+                    googleStatusChecked = true;
+                    return googleAuthEnabled;
+                }
+            } catch (err) {}
+        }
+        return false;
+    }
+
+    // 1. Sign In with Google OAuth
+    async function handleGoogleSignIn() {
+        clearError();
+        const nextUrl = document.getElementById("next-url").value || "/";
+
+        const googleBtn = document.getElementById("google-btn");
+        const googleText = document.getElementById("google-btn-text");
+        const googleSpinner = document.getElementById("google-spinner");
+
+        googleBtn.disabled = true;
+        googleText.textContent = "Checking Google Provider...";
+        googleSpinner.style.display = "inline-block";
+
+        try {
+            // Pre-check if Google provider is enabled in Supabase
+            const isEnabled = await checkGoogleStatus();
+
+            if (!isEnabled) {
+                googleBtn.disabled = false;
+                googleText.textContent = "Sign In with Google";
+                googleSpinner.style.display = "none";
+
+                showError("Google Sign-In is not enabled yet in your Supabase project (Error: Unsupported provider). Click below for 4-step setup instructions, or sign in using Email & Password.");
+                openGoogleModal();
+                return;
+            }
+
+            if (!supabaseClient) {
+                showError("Google Authentication requires the online Supabase connection.");
+                googleBtn.disabled = false;
+                googleText.textContent = "Sign In with Google";
+                googleSpinner.style.display = "none";
+                return;
+            }
+
+            googleText.textContent = "Connecting to Google...";
+
+            const redirectTo = window.location.origin + "/login?next=" + encodeURIComponent(nextUrl);
+            const { data, error } = await supabaseClient.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: redirectTo,
+                    queryParams: {
+                        access_type: 'offline',
+                        prompt: 'select_account'
+                    }
+                }
+            });
+
+            if (error) {
+                showError("Google Sign-In Error: " + error.message);
+                if (error.message && (error.message.includes("not enabled") || error.message.includes("validation_failed"))) {
+                    openGoogleModal();
+                }
+                googleBtn.disabled = false;
+                googleText.textContent = "Sign In with Google";
+                googleSpinner.style.display = "none";
+            }
+        } catch (err) {
+            showError("Error initiating Google OAuth: " + err.message);
+            googleBtn.disabled = false;
+            googleText.textContent = "Sign In with Google";
+            googleSpinner.style.display = "none";
+        }
+    }
+
+    // 2. Form submit handler (Validates and Authenticates user with Email + Password)
+    async function handleLoginSubmit(event) {
+        event.preventDefault();
+        clearError();
+
+        const emailInput = document.getElementById("email");
+        const passwordInput = document.getElementById("password");
+        const nextUrl = document.getElementById("next-url").value || "/";
+
+        const email = emailInput.value.trim().toLowerCase();
+        const password = passwordInput.value;
+
+        // Step A: Validate email presence
+        if (!email) {
+            showError("Please enter your email address.");
+            emailInput.focus();
+            return;
+        }
+
+        // Step B: Validate password presence
+        if (!password) {
+            showError("Please enter your password.");
+            passwordInput.focus();
+            return;
+        }
+
+        // Step C: Validate against the 3 authorized emails whitelist
+        if (!AUTHORIZED_EMAILS.includes(email) && email !== "admin@sridhanammotors.com" && email !== "admin") {
+            showError("Access Denied: Email '" + email + "' is not authorized. Only the 3 approved administrator accounts (sdmortrs@gmail.com, muthukumaransuthagar48@gmail.com, tech84602@gmail.com) have access.");
+            emailInput.focus();
+            return;
+        }
+
+        setLoading(true);
+
+        try {
+            // Step D: Authorize via backend against Supabase Auth
+            const response = await fetch("/api/auth/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: email, password: password }),
+                credentials: "same-origin"
+            });
+
+            const result = await response.json();
+
+            if (response.ok && result.success) {
+                // If browser client is active, sync session locally as well
+                if (supabaseClient && result.access_token && result.refresh_token) {
+                    try {
+                        await supabaseClient.auth.setSession({
+                            access_token: result.access_token,
+                            refresh_token: result.refresh_token
+                        });
+                    } catch (e) {}
+                }
+                window.location.replace(result.redirect_url || nextUrl);
+            } else {
+                showError(result.error || result.detail || "Authentication failed. Invalid email or password.");
+                setLoading(false);
+                passwordInput.focus();
+            }
+        } catch (err) {
+            showError("Network or server connection error: " + err.message);
+            setLoading(false);
+        }
+    }
+
+    // 3. On page load, verify active session or handle Google OAuth redirect
+    async function checkExistingSession() {
+        // Handle any error returned in the URL hash fragment from OAuth
+        if (window.location.hash) {
+            try {
+                const hashParams = new URLSearchParams(window.location.hash.substring(1));
+                const errorDesc = hashParams.get("error_description");
+                const errorMsg = hashParams.get("error");
+                if (errorDesc || errorMsg) {
+                    showError("Google Authentication Notice: " + (errorDesc || errorMsg));
+                    if (errorMsg === "unsupported_provider" || (errorDesc && errorDesc.includes("not enabled"))) {
+                        openGoogleModal();
+                    }
+                    history.replaceState(null, "", window.location.pathname + window.location.search);
+                }
+            } catch (e) {}
+        }
+
+        // If user explicitly signed out, do NOT auto-login from old cache!
+        if (isLoggedOut) {
+            return;
+        }
+
+        const nextUrl = document.getElementById("next-url").value || "/";
+
+        // Check if returning from Google OAuth or active Supabase session
+        if (supabaseClient) {
+            try {
+                const { data, error } = await supabaseClient.auth.getSession();
+                if (data && data.session && !error) {
+                    const sessionEmail = (data.session.user.email || "").toLowerCase().trim();
+
+                    // CRITICAL: Validate that Google account is one of the 3 authorized emails
+                    if (!AUTHORIZED_EMAILS.includes(sessionEmail) && sessionEmail !== "admin@sridhanammotors.com") {
+                        await supabaseClient.auth.signOut();
+                        showError("Access Denied: Google account (" + sessionEmail + ") is not authorized for Sri Dhanam Motors. Only sdmortrs@gmail.com, muthukumaransuthagar48@gmail.com, and tech84602@gmail.com have access.");
+                        return;
+                    }
+
+                    // Authorized! Sync cookie with backend and enter dashboard
+                    const syncRes = await syncSessionCookie(data.session.access_token);
+                    if (syncRes && syncRes.ok) {
+                        window.location.replace(nextUrl);
+                        return;
+                    }
+                }
+            } catch (e) {
+                console.warn("Session check error:", e);
+            }
+        }
+
+        // Check backend session cookie
+        try {
+            const res = await fetch("/api/auth/session", { credentials: "same-origin" });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.authenticated) {
+                    window.location.replace(nextUrl);
+                }
+            }
+        } catch (e) {}
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        checkExistingSession();
+    });
+</script>
+
 </body>
 </html>

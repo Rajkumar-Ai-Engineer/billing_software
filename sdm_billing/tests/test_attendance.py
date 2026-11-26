@@ -19,6 +19,7 @@ from services.attendance_service import (
 def client():
     init_db()
     with TestClient(app) as c:
+        c.cookies.set("sb_access_token", "local-dev-session-token-admin")
         yield c
     db = SessionLocal()
     db.query(Attendance).delete()

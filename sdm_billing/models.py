@@ -18,6 +18,7 @@ class Product(Base):
     category = Column(String(50), nullable=False, index=True)  # Spare Parts, Service, Vehicle Sales
     vehicle_type = Column(String(50), nullable=True)  # Scooter, Cycle, Loader, etc.
     stock_qty = Column(Integer, default=0, nullable=False)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now, nullable=True)
 
     def to_dict(self):
         return {
@@ -51,6 +52,7 @@ class Invoice(Base):
     gst_amount = Column(Float, default=0.0, nullable=False)
     grand_total = Column(Float, default=0.0, nullable=False)
     is_legacy = Column(Boolean, default=False, nullable=False)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now, nullable=True)
 
     items = relationship("InvoiceItem", back_populates="invoice", cascade="all, delete-orphan")
 
@@ -116,6 +118,7 @@ class Battery(Base):
     ah = Column(Float, nullable=False)
     created_at = Column(DateTime, default=datetime.now, nullable=False)
     sold = Column(Boolean, default=False, nullable=False)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now, nullable=True)
 
     def to_dict(self):
         return {
@@ -185,6 +188,7 @@ class Worker(Base):
     monthly_salary = Column(Float, default=15000.0, nullable=False)
     active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=datetime.now, nullable=False)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now, nullable=True)
 
     attendance_records = relationship("Attendance", back_populates="worker", cascade="all, delete-orphan")
     salary_advances = relationship("SalaryAdvance", back_populates="worker", cascade="all, delete-orphan")
@@ -211,6 +215,7 @@ class Attendance(Base):
     status = Column(String(10), nullable=False, default="P")  # 'P' = Present, 'A' = Absent, 'HD' = Half-Day
     notes = Column(String(255), default="", nullable=True)
     created_at = Column(DateTime, default=datetime.now, nullable=False)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now, nullable=True)
 
     worker = relationship("Worker", back_populates="attendance_records")
 
@@ -240,6 +245,7 @@ class SalaryAdvance(Base):
     amount = Column(Float, nullable=False, default=0.0)
     notes = Column(String(255), default="", nullable=True)
     created_at = Column(DateTime, default=datetime.now, nullable=False)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now, nullable=True)
 
     worker = relationship("Worker", back_populates="salary_advances")
 
@@ -265,6 +271,7 @@ class DailyExpense(Base):
     price = Column(Float, default=0.0, nullable=False)
     notes = Column(Text, default="", nullable=True)
     created_at = Column(DateTime, default=datetime.now, nullable=False)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now, nullable=True)
 
     def to_dict(self):
         return {
@@ -288,6 +295,7 @@ class PurchaseInvoice(Base):
     total_qty = Column(Integer, default=0, nullable=False)
     notes = Column(Text, default="", nullable=True)
     created_at = Column(DateTime, default=datetime.now, nullable=False)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now, nullable=True)
 
     def to_dict(self):
         return {
@@ -300,3 +308,37 @@ class PurchaseInvoice(Base):
             "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S") if self.created_at else ""
         }
 
+
+
+class AppSetting(Base):
+    __tablename__ = "app_settings"
+
+    id = Column(String(50), primary_key=True, default="default")
+    printer_name = Column(String(100), default="TVS LP 46", nullable=False)
+    print_mode = Column(String(50), default="driver_html", nullable=False)
+    printer_language = Column(String(50), default="EPL", nullable=False)
+    label_width_mm = Column(Integer, default=50, nullable=False)
+    label_height_mm = Column(Integer, default=30, nullable=False)
+    label_gap_mm = Column(Integer, default=3, nullable=False)
+    dpi = Column(Integer, default=203, nullable=False)
+    darkness = Column(Integer, default=8, nullable=False)
+    speed = Column(Integer, default=4, nullable=False)
+    margin_customer = Column(Float, default=0.80, nullable=False)
+    margin_dealer = Column(Float, default=0.40, nullable=False)
+    created_at = Column(DateTime, default=datetime.now, nullable=False)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)
+
+    def to_dict(self):
+        return {
+            "printer_name": self.printer_name,
+            "print_mode": self.print_mode,
+            "printer_language": self.printer_language,
+            "label_width_mm": self.label_width_mm,
+            "label_height_mm": self.label_height_mm,
+            "label_gap_mm": self.label_gap_mm,
+            "dpi": self.dpi,
+            "darkness": self.darkness,
+            "speed": self.speed,
+            "margin_customer": float(self.margin_customer),
+            "margin_dealer": float(self.margin_dealer)
+        }

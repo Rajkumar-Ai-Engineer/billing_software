@@ -9,6 +9,7 @@ from models import PurchaseInvoice
 @pytest.fixture(scope="module")
 def client():
     with TestClient(app) as c:
+        c.cookies.set("sb_access_token", "local-dev-session-token-admin")
         yield c
     # Cleanup any test created purchase invoices
     db = SessionLocal()

@@ -12,6 +12,7 @@ def client():
     db.close()
 
     with TestClient(app) as c:
+        c.cookies.set("sb_access_token", "local-dev-session-token-admin")
         yield c
 
     db = SessionLocal()

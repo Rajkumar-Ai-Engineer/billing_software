@@ -112,6 +112,7 @@ def test_labels_api_print_endpoint():
     from fastapi.testclient import TestClient
     from main import app
     client = TestClient(app)
+    client.cookies.set("sb_access_token", "local-dev-session-token-admin")
 
     # Test printing with simulated printer
     res = client.post("/api/labels/print", json={
