@@ -1,33 +1,15 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "builds": [
-    {
-      "src": "main.py",
-      "use": "@vercel/python",
-      "config": {
-        "includeFiles": [
-          "sdm_billing/**",
-          "public/**",
-          "static/**",
-          "data/**"
-        ]
-      }
-    }
-  ],
   "functions": {
-    "main.py": {
-      "includeFiles": "sdm_billing/**",
-      "maxDuration": 30
-    },
     "api/index.py": {
-      "includeFiles": "sdm_billing/**",
+      "includeFiles": "{sdm_billing/**,public/**,static/**,data/**}",
       "maxDuration": 30
     }
   },
-  "routes": [
+  "rewrites": [
     {
-      "src": "/(.*)",
-      "dest": "main.py"
+      "source": "/(.*)",
+      "destination": "/api/index.py"
     }
   ]
 }

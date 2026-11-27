@@ -23,22 +23,6 @@ for p in (str(ROOT_DIR), str(SDM_DIR)):
         sys.path.insert(0, p)
 
 from sdm_billing.main import app
-from fastapi import Request
-
-
-@app.middleware("http")
-async def vercel_prefix_middleware(request: Request, call_next):
-    """Normalize Vercel function prefixes before forwarding to FastAPI."""
-    path = request.scope.get("path", "")
-    for prefix in ("/main.py", "/api/index.py", "/api/index"):
-        if path == prefix or path.startswith(prefix + "/"):
-            adjusted_path = path[len(prefix):] or "/"
-            request.scope["path"] = adjusted_path
-            if request.scope.get("raw_path"):
-                request.scope["raw_path"] = adjusted_path.encode("utf-8")
-            break
-    return await call_next(request)
-
 
 if __name__ == "__main__":
     import uvicorn
