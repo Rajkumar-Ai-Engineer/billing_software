@@ -27,6 +27,26 @@ DATABASE_URL = os.getenv("DATABASE_URL") or os.getenv("SUPABASE_DB_URL") or os.g
 if os.getenv("TESTING") == "1":
     DATABASE_URL = None
 
+def sanitize_database_url(url: str) -> str:
+    """Auto-encodes unquoted password characters like # and @ in connection strings."""
+    if not url or "://" not in url or "@" not in url:
+        return url
+    try:
+        from urllib.parse import quote, unquote
+        prefix, remainder = url.split("://", 1)
+        credentials, host_part = remainder.rsplit("@", 1)
+        if ":" in credentials:
+            user, pwd = credentials.split(":", 1)
+            clean_pwd = quote(unquote(pwd), safe="")
+            return f"{prefix}://{user}:{clean_pwd}@{host_part}"
+    except Exception:
+        pass
+    return url
+
+
+if DATABASE_URL:
+    DATABASE_URL = sanitize_database_url(DATABASE_URL.strip())
+
 engine = None
 is_placeholder = False
 db_connection_error = None
@@ -34,26 +54,14 @@ db_connection_target = "not configured"
 if DATABASE_URL:
     is_placeholder = any(p in DATABASE_URL.lower() for p in ["your_", "your-", "[your", "example.com", "your-project"])
     try:
-        parsed_url = urlsplit(DATABASE_URL.strip())
+        parsed_url = urlsplit(DATABASE_URL)
         if parsed_url.hostname:
             db_connection_target = f"{parsed_url.hostname}:{parsed_url.port or 5432}"
     except Exception:
         db_connection_target = "invalid URL"
 
 if DATABASE_URL and not is_placeholder:
-    url_normalized = DATABASE_URL.strip()
-    # Auto-sanitize unencoded special characters in password (such as # or @)
-    import re
-    from urllib.parse import quote, unquote
-    pwd_match = re.match(r'^(?P<scheme>[a-zA-Z0-9+]+)://(?P<user>[^:]+):(?P<password>.+)@(?P<rest>[^@]+)$', url_normalized)
-    if pwd_match:
-        scheme = pwd_match.group('scheme')
-        user = pwd_match.group('user')
-        raw_pwd = pwd_match.group('password')
-        rest = pwd_match.group('rest')
-        clean_pwd = quote(unquote(raw_pwd), safe='')
-        url_normalized = f"{scheme}://{user}:{clean_pwd}@{rest}"
-
+    url_normalized = DATABASE_URL
     if url_normalized.startswith("postgres://"):
         url_normalized = url_normalized.replace("postgres://", "postgresql://", 1)
 
