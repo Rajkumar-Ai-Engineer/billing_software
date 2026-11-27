@@ -205,7 +205,7 @@ def get_main_js_script(script_name: str):
 async def auth_middleware(request: Request, call_next):
     # Normalize path if running behind Vercel rewrite or proxy
     path = request.scope.get("path", request.url.path)
-    for h in ("x-forwarded-uri", "x-vercel-original-url", "x-original-url", "x-invoke-path"):
+    for h in ("x-matched-path", "x-forwarded-uri", "x-vercel-original-url", "x-original-url"):
         f_url = request.headers.get(h)
         if f_url and not f_url.startswith("/api/index") and not f_url.startswith("/main.py"):
             path = f_url.split("?", 1)[0]
@@ -222,7 +222,9 @@ async def auth_middleware(request: Request, call_next):
 
     # Publicly accessible routes that never require authentication
     is_public = (
-        path.startswith("/static")
+        path == "/login"
+        or path.startswith("/login")
+        or path.startswith("/static")
         or path.startswith("/public")
         or path.endswith(".css")
         or path.endswith(".js")
