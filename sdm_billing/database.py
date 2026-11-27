@@ -1,6 +1,7 @@
 import os
 import sys
 from pathlib import Path
+from urllib.parse import urlsplit
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 from sqlalchemy.pool import NullPool
@@ -29,9 +30,15 @@ if os.getenv("TESTING") == "1":
 engine = None
 is_placeholder = False
 db_connection_error = None
-
+db_connection_target = "not configured"
 if DATABASE_URL:
     is_placeholder = any(p in DATABASE_URL.lower() for p in ["your_", "your-", "[your", "example.com", "your-project"])
+    try:
+        parsed_url = urlsplit(DATABASE_URL.strip())
+        if parsed_url.hostname:
+            db_connection_target = f"{parsed_url.hostname}:{parsed_url.port or 5432}"
+    except Exception:
+        db_connection_target = "invalid URL"
 
 if DATABASE_URL and not is_placeholder:
     url_normalized = DATABASE_URL.strip()
@@ -75,7 +82,8 @@ if DATABASE_URL and not is_placeholder:
         if IS_VERCEL and os.getenv("ALLOW_SQLITE_FALLBACK", "false").lower() not in ("1", "true", "yes"):
             raise RuntimeError(
                 "Production PostgreSQL connection failed; refusing to use ephemeral SQLite on Vercel. "
-                "Configure DATABASE_URL with the Supabase pooler connection string."
+                f"Configured target: {db_connection_target}. "
+                "Configure DATABASE_URL with the Supabase shared pooler connection string on port 6543."
             )
         print(f"[Database] Warning connecting to PostgreSQL ({db_connection_error}). Falling back to local SQLite.")
 
@@ -89,7 +97,8 @@ if engine is None:
     if IS_VERCEL and os.getenv("ALLOW_SQLITE_FALLBACK", "false").lower() not in ("1", "true", "yes"):
         raise RuntimeError(
             "DATABASE_URL is missing or invalid in Vercel production; refusing to use ephemeral SQLite. "
-            "Configure DATABASE_URL with the Supabase pooler connection string."
+            f"Configured target: {db_connection_target}. "
+            "Configure DATABASE_URL with the Supabase shared pooler connection string on port 6543."
         )
 
     SQLALCHEMY_DATABASE_URL = f"sqlite:///{DB_PATH}"
