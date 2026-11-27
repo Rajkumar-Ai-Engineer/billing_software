@@ -42,6 +42,18 @@ if DATABASE_URL:
 
 if DATABASE_URL and not is_placeholder:
     url_normalized = DATABASE_URL.strip()
+    # Auto-sanitize unencoded special characters in password (such as # or @)
+    import re
+    from urllib.parse import quote, unquote
+    pwd_match = re.match(r'^(?P<scheme>[a-zA-Z0-9+]+)://(?P<user>[^:]+):(?P<password>.+)@(?P<rest>[^@]+)$', url_normalized)
+    if pwd_match:
+        scheme = pwd_match.group('scheme')
+        user = pwd_match.group('user')
+        raw_pwd = pwd_match.group('password')
+        rest = pwd_match.group('rest')
+        clean_pwd = quote(unquote(raw_pwd), safe='')
+        url_normalized = f"{scheme}://{user}:{clean_pwd}@{rest}"
+
     if url_normalized.startswith("postgres://"):
         url_normalized = url_normalized.replace("postgres://", "postgresql://", 1)
 
