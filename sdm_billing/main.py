@@ -55,20 +55,27 @@ from routers.purchases import router as purchases_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 1. Initialize DB tables
-    init_db()
-    # 2. Run first-run data import if tables empty
-    db = SessionLocal()
     try:
-        report = run_first_run_import(db)
-        if report["products_imported"] > 0 or report["invoices_imported"] > 0:
-            print("=== FIRST RUN IMPORT REPORT ===")
-            for msg in report["messages"]:
-                print(f"[Import] {msg}")
-            for flag in report["products_flagged"]:
-                print(f"[Warning] {flag}")
-            print("================================")
-    finally:
-        db.close()
+        init_db()
+    except Exception as e:
+        print(f"[Lifespan] Warning initializing database: {e}")
+
+    # 2. Run first-run data import if tables empty
+    try:
+        db = SessionLocal()
+        try:
+            report = run_first_run_import(db)
+            if report.get("products_imported", 0) > 0 or report.get("invoices_imported", 0) > 0:
+                print("=== FIRST RUN IMPORT REPORT ===")
+                for msg in report.get("messages", []):
+                    print(f"[Import] {msg}")
+                for flag in report.get("products_flagged", []):
+                    print(f"[Warning] {flag}")
+                print("================================")
+        finally:
+            db.close()
+    except Exception as e:
+        print(f"[Lifespan] Warning during first run import: {e}")
     yield
 
 

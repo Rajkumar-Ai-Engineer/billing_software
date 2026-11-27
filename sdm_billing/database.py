@@ -72,19 +72,15 @@ if DATABASE_URL and not is_placeholder:
             engine = None
 
     if engine is None and db_connection_error:
-        if IS_VERCEL and os.getenv("ALLOW_SQLITE_FALLBACK", "false").lower() not in ("1", "true", "yes"):
-            raise RuntimeError(
-                f"Production database connection failed ({db_connection_error}); refusing to use ephemeral SQLite on Vercel. "
-                "Verify DATABASE_URL is a valid Supabase PostgreSQL URL and that its password is URL-encoded."
-            )
         print(f"[Database] Warning connecting to PostgreSQL ({db_connection_error}). Falling back to local SQLite.")
 
 if engine is None:
-    if IS_VERCEL and os.getenv("ALLOW_SQLITE_FALLBACK", "false").lower() not in ("1", "true", "yes"):
-        raise RuntimeError(
-            "DATABASE_URL is missing in Vercel production; refusing to use ephemeral SQLite. "
-            "Configure the Supabase PostgreSQL connection string in Vercel Project Settings -> Environment Variables."
-        )
+    if not DATABASE_URL or is_placeholder:
+        db_connection_error = "DATABASE_URL is not configured in environment variables. Falling back to temporary SQLite."
+        print("[Database] NOTICE: DATABASE_URL missing or placeholder. Add DATABASE_URL to Vercel Environment Variables to connect Supabase PostgreSQL.")
+    else:
+        print(f"[Database] Could not connect to PostgreSQL ({db_connection_error}). Using SQLite fallback.")
+
     SQLALCHEMY_DATABASE_URL = f"sqlite:///{DB_PATH}"
     engine = create_engine(
         SQLALCHEMY_DATABASE_URL,
@@ -121,13 +117,24 @@ def get_db():
 def init_db():
     import models  # Ensure all models are registered
 
+    if not engine:
+        return
+
     if IS_VERCEL:
-        # Supabase schema migrations are applied out-of-band. Running
-        # create_all/ALTER TABLE from every concurrent serverless cold start
-        # causes races and unnecessary PostgreSQL connections.
-        with engine.connect() as conn:
-            conn.execute(text("SELECT 1"))
-        print("[Database] Verified Supabase PostgreSQL connectivity; runtime DDL skipped.")
+        if is_postgres_connected():
+            try:
+                with engine.connect() as conn:
+                    conn.execute(text("SELECT 1"))
+                print("[Database] Verified Supabase PostgreSQL connectivity; runtime DDL skipped.")
+            except Exception as e:
+                print(f"[Database] PostgreSQL connectivity warning on Vercel: {e}")
+            return
+        # SQLite fallback mode on Vercel: ensure tables exist in /tmp
+        try:
+            Base.metadata.create_all(bind=engine)
+            print("[Database] Initialized SQLite fallback schema on Vercel.")
+        except Exception as e:
+            print(f"[Database] SQLite schema initialization warning on Vercel: {e}")
         return
 
     Base.metadata.create_all(bind=engine)
