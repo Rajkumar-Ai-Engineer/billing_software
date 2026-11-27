@@ -22,25 +22,23 @@ for p in (str(ROOT_DIR), str(SDM_DIR)):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-from sdm_billing.main import app as _fastapi_app
+from sdm_billing.main import app
+from fastapi import Request
 
 
-async def app_handler(scope, receive, send):
+@app.middleware("http")
+async def vercel_prefix_middleware(request: Request, call_next):
     """Normalize Vercel function prefixes before forwarding to FastAPI."""
-    if scope.get("type") == "http":
-        path = scope.get("path", "")
-        for prefix in ("/main.py", "/api/index.py", "/api/index"):
-            if path == prefix or path.startswith(prefix + "/"):
-                scope = dict(scope)
-                adjusted_path = path[len(prefix):] or "/"
-                scope["path"] = adjusted_path
-                if scope.get("raw_path"):
-                    scope["raw_path"] = adjusted_path.encode("utf-8")
-                break
-    await _fastapi_app(scope, receive, send)
+    path = request.scope.get("path", "")
+    for prefix in ("/main.py", "/api/index.py", "/api/index"):
+        if path == prefix or path.startswith(prefix + "/"):
+            adjusted_path = path[len(prefix):] or "/"
+            request.scope["path"] = adjusted_path
+            if request.scope.get("raw_path"):
+                request.scope["raw_path"] = adjusted_path.encode("utf-8")
+            break
+    return await call_next(request)
 
-
-app = app_handler
 
 if __name__ == "__main__":
     import uvicorn

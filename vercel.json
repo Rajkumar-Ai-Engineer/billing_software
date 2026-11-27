@@ -3,20 +3,31 @@
   "builds": [
     {
       "src": "main.py",
-      "use": "@vercel/python"
+      "use": "@vercel/python",
+      "config": {
+        "includeFiles": [
+          "sdm_billing/**",
+          "public/**",
+          "static/**",
+          "data/**"
+        ]
+      }
     }
   ],
+  "functions": {
+    "main.py": {
+      "includeFiles": "sdm_billing/**",
+      "maxDuration": 30
+    },
+    "api/index.py": {
+      "includeFiles": "sdm_billing/**",
+      "maxDuration": 30
+    }
+  },
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "/main.py",
-      "transforms": [
-        {
-          "type": "request.path",
-          "op": "set",
-          "args": "/$1"
-        }
-      ]
+      "dest": "main.py"
     }
   ]
 }
