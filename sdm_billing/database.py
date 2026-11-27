@@ -72,6 +72,11 @@ if DATABASE_URL and not is_placeholder:
             engine = None
 
     if engine is None and db_connection_error:
+        if IS_VERCEL and os.getenv("ALLOW_SQLITE_FALLBACK", "false").lower() not in ("1", "true", "yes"):
+            raise RuntimeError(
+                "Production PostgreSQL connection failed; refusing to use ephemeral SQLite on Vercel. "
+                "Configure DATABASE_URL with the Supabase pooler connection string."
+            )
         print(f"[Database] Warning connecting to PostgreSQL ({db_connection_error}). Falling back to local SQLite.")
 
 if engine is None:
@@ -80,6 +85,12 @@ if engine is None:
         print("[Database] NOTICE: DATABASE_URL missing or placeholder. Add DATABASE_URL to Vercel Environment Variables to connect Supabase PostgreSQL.")
     else:
         print(f"[Database] Could not connect to PostgreSQL ({db_connection_error}). Using SQLite fallback.")
+
+    if IS_VERCEL and os.getenv("ALLOW_SQLITE_FALLBACK", "false").lower() not in ("1", "true", "yes"):
+        raise RuntimeError(
+            "DATABASE_URL is missing or invalid in Vercel production; refusing to use ephemeral SQLite. "
+            "Configure DATABASE_URL with the Supabase pooler connection string."
+        )
 
     SQLALCHEMY_DATABASE_URL = f"sqlite:///{DB_PATH}"
     engine = create_engine(
