@@ -203,22 +203,22 @@ def get_main_js_script(script_name: str):
 # =============================================================================
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
-    # Allow instant debug inspection
-    if "debug" in request.url.path or "debug" in request.scope.get("path", ""):
-        return await call_next(request)
+    # 1. Resolve true request path across Vercel rewrites, proxies, and direct calls
+    v_param = request.query_params.get("__vercel_path")
+    if v_param is not None:
+        path = "/" + v_param.lstrip("/")
+    else:
+        path = request.scope.get("path", request.url.path)
+        for h in ("x-matched-path", "x-forwarded-uri", "x-vercel-original-url", "x-original-url"):
+            f_url = request.headers.get(h)
+            if f_url and not f_url.startswith("/api/index") and not f_url.startswith("/main.py"):
+                path = f_url.split("?", 1)[0]
+                break
 
-    # Normalize path if running behind Vercel rewrite or proxy
-    path = request.scope.get("path", request.url.path)
-    for h in ("x-matched-path", "x-forwarded-uri", "x-vercel-original-url", "x-original-url"):
-        f_url = request.headers.get(h)
-        if f_url and not f_url.startswith("/api/index") and not f_url.startswith("/main.py"):
-            path = f_url.split("?", 1)[0]
-            break
-
-    for prefix in ("/api/index.py", "/api/index", "/main.py"):
-        if path == prefix or path.startswith(prefix + "/"):
-            path = path[len(prefix):] or "/"
-            break
+        for prefix in ("/api/index.py", "/api/index", "/main.py"):
+            if path == prefix or path.startswith(prefix + "/"):
+                path = path[len(prefix):] or "/"
+                break
 
     request.scope["path"] = path
     if request.scope.get("raw_path"):
@@ -288,8 +288,11 @@ async def auth_middleware(request: Request, call_next):
         else:
             # Browser navigation - redirect to Login page with target return URL
             next_url = path
-            if request.url.query:
-                next_url += f"?{request.url.query}"
+            filtered_query = "&".join(
+                f"{k}={v}" for k, v in request.query_params.items() if k != "__vercel_path"
+            )
+            if filtered_query:
+                next_url += f"?{filtered_query}"
             return RedirectResponse(
                 url=f"/login?next={next_url}",
                 status_code=status.HTTP_302_FOUND
@@ -497,16 +500,6 @@ def get_google_auth_status():
     Checks if Google OAuth provider is enabled in the Supabase project.
     """
     return check_google_provider_status()
-
-
-@app.get("/api/debug")
-def debug_endpoint(request: Request):
-    return {
-        "url_path": request.url.path,
-        "scope_path": request.scope.get("path"),
-        "headers": dict(request.headers),
-        "query_params": dict(request.query_params)
-    }
 
 
 @app.get("/api/health/db")
