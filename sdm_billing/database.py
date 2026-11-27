@@ -28,49 +28,62 @@ if os.getenv("TESTING") == "1":
 
 engine = None
 is_placeholder = False
+db_connection_error = None
+
 if DATABASE_URL:
     is_placeholder = any(p in DATABASE_URL.lower() for p in ["your_", "your-", "[your", "example.com", "your-project"])
 
 if DATABASE_URL and not is_placeholder:
-    try:
-        url_normalized = DATABASE_URL
-        if url_normalized.startswith("postgres://"):
-            url_normalized = url_normalized.replace("postgres://", "postgresql+psycopg2://", 1)
-        elif url_normalized.startswith("postgresql+psycopg://"):
-            url_normalized = url_normalized.replace("postgresql+psycopg://", "postgresql+psycopg2://", 1)
-        elif url_normalized.startswith("postgresql://"):
-            # SQLAlchemy 2.x defaults postgresql:// to psycopg (v3), while
-            # this deployment installs psycopg2-binary.
-            url_normalized = url_normalized.replace("postgresql://", "postgresql+psycopg2://", 1)
-        engine_options = {
-            "pool_pre_ping": True,
-            "connect_args": {"connect_timeout": 30, "sslmode": "require"},
-        }
-        if IS_VERCEL:
-            # A Vercel function may be frozen and resumed on a different
-            # request. Do not retain PostgreSQL connections across invocations.
-            engine_options["poolclass"] = NullPool
-        else:
-            engine_options.update(pool_recycle=300, pool_size=5, max_overflow=10)
-        engine = create_engine(url_normalized, **engine_options)
-        # Test connection
-        with engine.connect() as test_conn:
-            pass
-        print("[Database] Connected successfully to Supabase PostgreSQL database.")
-    except Exception as e:
+    url_normalized = DATABASE_URL.strip()
+    if url_normalized.startswith("postgres://"):
+        url_normalized = url_normalized.replace("postgres://", "postgresql://", 1)
+
+    engine_options = {
+        "pool_pre_ping": True,
+        "connect_args": {"connect_timeout": 30, "sslmode": "require"},
+    }
+    if IS_VERCEL:
+        engine_options["poolclass"] = NullPool
+    else:
+        engine_options.update(pool_recycle=300, pool_size=5, max_overflow=10)
+
+    candidates = [url_normalized]
+    if "postgresql+psycopg://" in url_normalized:
+        candidates.append(url_normalized.replace("postgresql+psycopg://", "postgresql+psycopg2://", 1))
+        candidates.append(url_normalized.replace("postgresql+psycopg://", "postgresql://", 1))
+    elif "postgresql+psycopg2://" in url_normalized:
+        candidates.append(url_normalized.replace("postgresql+psycopg2://", "postgresql+psycopg://", 1))
+        candidates.append(url_normalized.replace("postgresql+psycopg2://", "postgresql://", 1))
+    elif "postgresql://" in url_normalized and "+psycopg" not in url_normalized:
+        candidates.append(url_normalized.replace("postgresql://", "postgresql+psycopg2://", 1))
+        candidates.append(url_normalized.replace("postgresql://", "postgresql+psycopg://", 1))
+
+    for candidate_url in candidates:
+        try:
+            eng = create_engine(candidate_url, **engine_options)
+            with eng.connect() as test_conn:
+                pass
+            engine = eng
+            print("[Database] Connected successfully to Supabase PostgreSQL database.")
+            db_connection_error = None
+            break
+        except Exception as e:
+            db_connection_error = str(e)
+            engine = None
+
+    if engine is None and db_connection_error:
         if IS_VERCEL and os.getenv("ALLOW_SQLITE_FALLBACK", "false").lower() not in ("1", "true", "yes"):
             raise RuntimeError(
-                "Production database connection failed; refusing to use ephemeral SQLite on Vercel. "
+                f"Production database connection failed ({db_connection_error}); refusing to use ephemeral SQLite on Vercel. "
                 "Verify DATABASE_URL is a valid Supabase PostgreSQL URL and that its password is URL-encoded."
-            ) from e
-        print(f"[Database] Warning connecting to PostgreSQL ({e}). Falling back to local SQLite.")
-        engine = None
+            )
+        print(f"[Database] Warning connecting to PostgreSQL ({db_connection_error}). Falling back to local SQLite.")
 
 if engine is None:
     if IS_VERCEL and os.getenv("ALLOW_SQLITE_FALLBACK", "false").lower() not in ("1", "true", "yes"):
         raise RuntimeError(
             "DATABASE_URL is missing in Vercel production; refusing to use ephemeral SQLite. "
-            "Configure the Supabase PostgreSQL connection string before serving the application."
+            "Configure the Supabase PostgreSQL connection string in Vercel Project Settings -> Environment Variables."
         )
     SQLALCHEMY_DATABASE_URL = f"sqlite:///{DB_PATH}"
     engine = create_engine(
@@ -78,6 +91,19 @@ if engine is None:
         connect_args={"check_same_thread": False}
     )
     print(f"[Database] Using local SQLite database at {DB_PATH}")
+
+
+def is_postgres_connected() -> bool:
+    return engine is not None and getattr(engine.dialect, "name", "") == "postgresql"
+
+
+def get_db_status() -> dict:
+    return {
+        "is_postgres": is_postgres_connected(),
+        "database_type": "Supabase PostgreSQL" if is_postgres_connected() else "Local SQLite Fallback",
+        "has_database_url": bool(DATABASE_URL and not is_placeholder),
+        "error": db_connection_error if not is_postgres_connected() else None
+    }
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

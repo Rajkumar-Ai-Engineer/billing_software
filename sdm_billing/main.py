@@ -217,6 +217,7 @@ async def auth_middleware(request: Request, call_next):
             "/api/auth/session",
             "/api/auth/config",
             "/api/auth/google-status",
+            "/api/health/db",
             "/docs",
             "/openapi.json",
             "/favicon.ico"
@@ -288,6 +289,7 @@ def login_page(request: Request, next: str = "/"):
         return RedirectResponse(url=next, status_code=status.HTTP_302_FOUND)
 
     cfg = get_public_config()
+    from database import is_postgres_connected
     return templates.TemplateResponse(
         request=request,
         name="login.html",
@@ -296,6 +298,7 @@ def login_page(request: Request, next: str = "/"):
             "supabase_url": cfg["supabase_url"],
             "supabase_anon_key": cfg["supabase_anon_key"],
             "supabase_configured": cfg["is_configured"],
+            "is_postgres_connected": is_postgres_connected(),
             "authorized_emails": AUTHORIZED_EMAILS,
             "default_password": DEFAULT_PASSWORD,
             "next_url": next,
@@ -466,6 +469,15 @@ def get_google_auth_status():
     Checks if Google OAuth provider is enabled in the Supabase project.
     """
     return check_google_provider_status()
+
+
+@app.get("/api/health/db")
+def get_database_health():
+    """
+    Returns database connection status (PostgreSQL vs SQLite fallback) for deployment verification.
+    """
+    from database import get_db_status
+    return get_db_status()
 
 
 @app.get("/logout")

@@ -706,6 +706,10 @@
             <div id="config-notice" class="alert-box alert-warning" style="display: block;">
                 <strong>Supabase Notice:</strong> Running in offline local fallback mode.
             </div>
+            {% elif not is_postgres_connected %}
+            <div id="db-notice" class="alert-box alert-warning" style="display: block;">
+                <strong>Database Notice:</strong> <code>DATABASE_URL</code> is not configured. Running in local fallback mode. Add <code>DATABASE_URL</code> to Vercel Environment Variables to connect Supabase PostgreSQL.
+            </div>
             {% endif %}
 
             <!-- SECTION 1: Sign In with Google -->
@@ -870,7 +874,7 @@
                 To enable <strong>Sign In with Google</strong>, connect your Google Cloud OAuth credentials:
             </p>
             <div class="modal-steps-box">
-                <h4>Quick 4-Step Setup:</h4>
+                <h4>Quick 5-Step Setup:</h4>
                 <ol>
                     <li>
                         Open your 
@@ -883,6 +887,10 @@
                     <li>
                         In Google Cloud Console, add this Authorized Redirect URI:
                         <span class="code-pill">https://nalrgmdtxxjfbowbtuho.supabase.co/auth/v1/callback</span>
+                    </li>
+                    <li>
+                        In Supabase Dashboard &rarr; <strong>Authentication</strong> &rarr; <strong>URL Configuration</strong>:
+                        Set <strong>Site URL</strong> to your live Vercel domain (e.g. <code>https://your-app.vercel.app</code>) instead of <code>localhost:3000</code>, and add <code>https://your-app.vercel.app/**</code> under <strong>Redirect URLs</strong>.
                     </li>
                 </ol>
             </div>
