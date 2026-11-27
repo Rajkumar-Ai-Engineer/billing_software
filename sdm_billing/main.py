@@ -96,20 +96,6 @@ app.add_middleware(
 )
 
 
-@app.middleware("http")
-async def vercel_prefix_middleware(request: Request, call_next):
-    """Normalize Vercel function prefixes (/api/index, /api/index.py, /main.py) before routing."""
-    path = request.scope.get("path", "")
-    for prefix in ("/api/index.py", "/api/index", "/main.py"):
-        if path == prefix or path.startswith(prefix + "/"):
-            adjusted_path = path[len(prefix):] or "/"
-            request.scope["path"] = adjusted_path
-            if request.scope.get("raw_path"):
-                request.scope["raw_path"] = adjusted_path.encode("utf-8")
-            break
-    return await call_next(request)
-
-
 class CustomStaticFiles(StaticFiles):
     """
     Subclassed StaticFiles ensuring stylesheets, scripts, and assets always return proper
@@ -217,7 +203,22 @@ def get_main_js_script(script_name: str):
 # =============================================================================
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
-    path = request.url.path
+    # Normalize path if running behind Vercel rewrite or proxy
+    path = request.scope.get("path", request.url.path)
+    for h in ("x-forwarded-uri", "x-vercel-original-url", "x-original-url", "x-invoke-path"):
+        f_url = request.headers.get(h)
+        if f_url and not f_url.startswith("/api/index") and not f_url.startswith("/main.py"):
+            path = f_url.split("?", 1)[0]
+            break
+
+    for prefix in ("/api/index.py", "/api/index", "/main.py"):
+        if path == prefix or path.startswith(prefix + "/"):
+            path = path[len(prefix):] or "/"
+            break
+
+    request.scope["path"] = path
+    if request.scope.get("raw_path"):
+        request.scope["raw_path"] = path.encode("utf-8")
 
     # Publicly accessible routes that never require authentication
     is_public = (
