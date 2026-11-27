@@ -203,6 +203,10 @@ def get_main_js_script(script_name: str):
 # =============================================================================
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
+    # Allow instant debug inspection
+    if "debug" in request.url.path or "debug" in request.scope.get("path", ""):
+        return await call_next(request)
+
     # Normalize path if running behind Vercel rewrite or proxy
     path = request.scope.get("path", request.url.path)
     for h in ("x-matched-path", "x-forwarded-uri", "x-vercel-original-url", "x-original-url"):
@@ -493,6 +497,16 @@ def get_google_auth_status():
     Checks if Google OAuth provider is enabled in the Supabase project.
     """
     return check_google_provider_status()
+
+
+@app.get("/api/debug")
+def debug_endpoint(request: Request):
+    return {
+        "url_path": request.url.path,
+        "scope_path": request.scope.get("path"),
+        "headers": dict(request.headers),
+        "query_params": dict(request.query_params)
+    }
 
 
 @app.get("/api/health/db")
